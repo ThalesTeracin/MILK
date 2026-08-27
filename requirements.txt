@@ -1,3 +1,6 @@
+# Consolidado (Fase 5, 2026-08-27): já era o superset de todos os
+# requirements_phaseN.txt (nenhum pacote extra encontrado neles).
+# Originais preservados em installer/archive_requirements/.
 psutil>=6.0.0
 python-dotenv>=1.0.1
 SpeechRecognition>=3.17.0
