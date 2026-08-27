@@ -9,6 +9,19 @@ from browser.browser_agent import BrowserAgent
 from vision.screen_agent import ScreenAgent
 from coding.coding_agent_v2 import CodingAgentV2
 from memory.memory_manager import MemoryManager
+from security.permission_manager import PermissionManager
+
+# Alvos de open_app considerados sensíveis, mapeados para ações do perfil
+# de permissão em config/permission_profiles.json. "prompt de comando" e
+# "powershell" abrem um shell interativo (equivalente a arbitrary_shell,
+# negado por padrão em todos os perfis); "serviços" abre um console MMC
+# administrativo (open_admin).
+SENSITIVE_OPEN_TARGETS = {
+    "prompt de comando": "arbitrary_shell",
+    "powershell": "arbitrary_shell",
+    "serviços": "open_admin",
+    "servicos": "open_admin",
+}
 
 class MilkCore:
     def __init__(self):
@@ -24,6 +37,13 @@ class MilkCore:
         self.screen=ScreenAgent(self.ai)
         self.coder=CodingAgentV2(self.ai,max_repair_loops=2)
         self.memory=MemoryManager()
+        # Perfil padrão "balanced": mantém o comportamento atual (a maioria
+        # das ações roda direto), mas passa a negar de verdade arbitrary_shell
+        # e a exigir confirmação para ações marcadas em config/permission_profiles.json.
+        self.permissions=PermissionManager(profile="balanced")
+        # Ação adiada aguardando confirmação verbal ("confirmar"). Pode vir
+        # do navegador ou de um gate de permissão (open_app, coding_task, etc.).
+        self._pending_confirmation=None
 
     def say(self,text):
         self.speaker.say(text)
@@ -76,17 +96,16 @@ class MilkCore:
             )
             return
 
-        # confirmação browser
+        # confirmação de ação adiada (navegador ou gate de permissão)
         if low in ["confirmar","confirmo","pode enviar","confirmar envio"]:
-            try:
-                pending=getattr(self, "_pending_browser_action", None)
-                if pending=="submit":
-                    reply=self.browser.submit()
-                    self._pending_browser_action=None
-                    self.say(reply)
-                    return
-            except Exception:
-                pass
+            pending=self._pending_confirmation
+            if pending:
+                self._pending_confirmation=None
+                try:
+                    pending["run"]()
+                except Exception as e:
+                    self.say(f"Não consegui concluir a ação confirmada. {e}")
+                return
 
         result=self.nlu.interpret(text)
         intent=result.get("intent","unknown")
@@ -106,7 +125,18 @@ class MilkCore:
             return
 
         if intent=="open_app":
-            self.say(self.windows.open_target(result.get("target")))
+            target=result.get("target")
+            action=SENSITIVE_OPEN_TARGETS.get((target or "").lower().strip())
+            if action:
+                check=self.permissions.check(action)
+                if not check["allowed"]:
+                    self.say(f"Não posso fazer isso. {check['reason']}")
+                    return
+                if check["confirm"]:
+                    self._pending_confirmation={"run": lambda t=target: self.say(self.windows.open_target(t))}
+                    self.say(f"Isso requer confirmação. Diga confirmar para continuar.")
+                    return
+            self.say(self.windows.open_target(target))
             return
 
         if intent=="system_status":
@@ -119,23 +149,35 @@ class MilkCore:
 
         if intent=="coding_task":
             task=result.get("task") or text
-            self.say("Vou criar, validar e tentar corrigir automaticamente.")
-            build=self.coder.build_and_repair(task)
-            print("[CODING V2]",build)
 
-            if build.get("project"):
-                try:
-                    self.memory.remember_project_from_build(build)
-                except Exception:
-                    pass
+            def _run_coding_task():
+                self.say("Vou criar, validar e tentar corrigir automaticamente.")
+                build=self.coder.build_and_repair(task)
+                print("[CODING V2]",build)
 
-            if build.get("ok"):
-                self.say(f"Projeto pronto em {build.get('project')}. Os testes e a validação passaram.")
-            else:
                 if build.get("project"):
-                    self.say(f"Criei o projeto em {build.get('project')}, mas ainda restaram erros para revisar.")
+                    try:
+                        self.memory.remember_project_from_build(build)
+                    except Exception:
+                        pass
+
+                if build.get("ok"):
+                    self.say(f"Projeto pronto em {build.get('project')}. Os testes e a validação passaram.")
                 else:
-                    self.say(build.get("message","Não consegui concluir o projeto."))
+                    if build.get("project"):
+                        self.say(f"Criei o projeto em {build.get('project')}, mas ainda restaram erros para revisar.")
+                    else:
+                        self.say(build.get("message","Não consegui concluir o projeto."))
+
+            check=self.permissions.check("write_file")
+            if not check["allowed"]:
+                self.say(f"Não posso criar ou alterar arquivos agora. {check['reason']}")
+                return
+            if check["confirm"]:
+                self._pending_confirmation={"run": _run_coding_task}
+                self.say("Essa ação vai criar ou alterar arquivos em disco. Diga confirmar para continuar.")
+                return
+            _run_coding_task()
             return
 
         if intent=="browser_open":
@@ -163,7 +205,7 @@ class MilkCore:
             return
 
         if intent=="browser_submit":
-            self._pending_browser_action="submit"
+            self._pending_confirmation={"run": lambda: self.say(self.browser.submit())}
             self.say("Essa ação pode enviar dados. Diga confirmar para continuar.")
             return
 

@@ -80,3 +80,9 @@ Se o usuário estiver apenas conversando ou perguntando algo, use "chat".
             "intent":"chat",
             "reply":"Meu cérebro de inteligência artificial ainda não está configurado."
         }
+
+# Bug pré-existente encontrado durante a Fase 2: core/orchestrator.py importa
+# "NaturalLanguageInterpreter" deste módulo, mas apenas HybridNLU estava
+# definida aqui -- MilkCore nunca conseguia ser instanciado (ImportError).
+# Alias mínimo para destravar; não altera nenhum comportamento de NLU.
+NaturalLanguageInterpreter = HybridNLU

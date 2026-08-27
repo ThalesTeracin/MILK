@@ -35,7 +35,10 @@ class WindowsAgent:
             return "Abrindo navegador."
 
         if target=="serviços":
-            subprocess.Popen("services.msc", shell=True)
+            # Antes usava subprocess.Popen(..., shell=True), inconsistente com
+            # o resto do arquivo (shell=False) e desnecessário: os.startfile
+            # resolve a associação do .msc sem passar por cmd.exe/shell.
+            os.startfile("services.msc")
             return "Abrindo serviços do Windows."
 
         if target=="painel de controle":
