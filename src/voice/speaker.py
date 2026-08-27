@@ -1,4 +1,4 @@
-import subprocess
+from core.proc import run_hidden
 
 class NaturalSpeaker:
     def say(self, text):
@@ -17,7 +17,7 @@ class NaturalSpeaker:
             "$s.Rate=0; $s.Volume=100; "
             f"$s.Speak('{safe}')"
         )
-        subprocess.run(
+        run_hidden(
             ["powershell.exe","-NoProfile","-Command",ps],
             timeout=60,
             check=False

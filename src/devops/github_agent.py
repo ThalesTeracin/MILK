@@ -1,14 +1,12 @@
-import subprocess
 from pathlib import Path
+
+from core.proc import run_hidden
 
 class GitHubAgent:
     def _run(self, args, cwd=None, timeout=120):
-        p = subprocess.run(
+        p = run_hidden(
             args,
-            cwd=str(cwd) if cwd else None,
-            capture_output=True,
-            text=True,
-            shell=False,
+            cwd=cwd,
             timeout=timeout
         )
         return {
@@ -20,7 +18,7 @@ class GitHubAgent:
 
     def gh_available(self):
         try:
-            r = subprocess.run(["gh","--version"],capture_output=True,text=True,timeout=10)
+            r = run_hidden(["gh","--version"],timeout=10)
             return r.returncode == 0, (r.stdout or r.stderr).splitlines()[0]
         except Exception as e:
             return False, str(e)

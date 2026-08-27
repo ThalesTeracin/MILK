@@ -1,9 +1,10 @@
 import json
-import subprocess
 import os
 import webbrowser
 from pathlib import Path
 import psutil
+
+from core.proc import run_hidden
 
 REGISTRY=Path("config/skills.json")
 
@@ -28,7 +29,7 @@ class BuiltinSkills:
 
     @staticmethod
     def git_status(args=None):
-        p=subprocess.run(["git","status","--short","--branch"],cwd=r"C:\JARVIS",capture_output=True,text=True)
+        p=run_hidden(["git","status","--short","--branch"],cwd=r"C:\JARVIS")
         return {"ok":p.returncode==0,"stdout":p.stdout.strip(),"stderr":p.stderr.strip()}
 
     @staticmethod

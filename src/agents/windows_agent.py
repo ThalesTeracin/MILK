@@ -19,6 +19,10 @@ class WindowsAgent:
         target=(target or "").lower().strip()
 
         if target in self.APPS:
+            # Apps visiveis ao usuario (calculadora, notepad, cmd, etc.):
+            # NAO usar popen_hidden aqui -- isso esconderia a janela que o
+            # usuario pediu para abrir. popen_hidden e para processos de
+            # console em background (git, gh, whisper-cli, powershell TTS).
             subprocess.Popen(self.APPS[target], shell=False)
             return f"Abrindo {target}."
 

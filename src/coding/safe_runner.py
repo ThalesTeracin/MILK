@@ -1,5 +1,7 @@
 from pathlib import Path
-import subprocess, sys, json, os
+import sys, json, os
+
+from core.proc import run_hidden
 
 class SafeRunner:
     def __init__(self, project_dir, python_exe=None):
@@ -8,13 +10,10 @@ class SafeRunner:
 
     def _run(self, cmd, timeout=90):
         try:
-            p = subprocess.run(
+            p = run_hidden(
                 cmd,
-                cwd=str(self.project),
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                shell=False
+                cwd=self.project,
+                timeout=timeout
             )
             return {
                 "ok": p.returncode == 0,

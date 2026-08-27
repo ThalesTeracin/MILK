@@ -1,5 +1,7 @@
 from pathlib import Path
-import subprocess, sys, re, json
+import sys, re, json
+
+from core.proc import run_hidden
 
 # Dependências permitidas nesta fase.
 ALLOWLIST = {
@@ -15,7 +17,7 @@ class DependencyManager:
 
     def ensure_venv(self):
         if not self.venv.exists():
-            subprocess.run(
+            run_hidden(
                 [sys.executable, "-m", "venv", str(self.venv)],
                 check=True,
                 timeout=180
@@ -58,10 +60,8 @@ class DependencyManager:
         results = {"installed": [], "blocked": blocked, "errors": []}
 
         for pkg in allowed:
-            p = subprocess.run(
+            p = run_hidden(
                 [str(self.python_path()), "-m", "pip", "install", pkg],
-                capture_output=True,
-                text=True,
                 timeout=180
             )
             if p.returncode == 0:

@@ -1,7 +1,7 @@
 from pathlib import Path
-import subprocess
 import json
-import os
+
+from core.proc import run_hidden
 
 class GitAgent:
     def __init__(self, default_root=r"C:\JARVIS\projects"):
@@ -9,12 +9,9 @@ class GitAgent:
         self.default_root.mkdir(parents=True, exist_ok=True)
 
     def _run(self, args, cwd, timeout=60):
-        p = subprocess.run(
+        p = run_hidden(
             args,
-            cwd=str(cwd),
-            capture_output=True,
-            text=True,
-            shell=False,
+            cwd=cwd,
             timeout=timeout
         )
         return {
@@ -31,7 +28,7 @@ class GitAgent:
 
     def git_available(self):
         try:
-            r = subprocess.run(["git","--version"],capture_output=True,text=True,timeout=10)
+            r = run_hidden(["git","--version"],timeout=10)
             return r.returncode == 0, (r.stdout or r.stderr).strip()
         except Exception as e:
             return False, str(e)

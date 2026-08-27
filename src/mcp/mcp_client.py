@@ -3,7 +3,8 @@ import subprocess
 import threading
 import queue
 import itertools
-import os
+
+from core.proc import popen_hidden
 
 class MCPClient:
     def __init__(self, name, command, args=None, cwd=None, env=None):
@@ -23,26 +24,14 @@ class MCPClient:
         if self.proc and self.proc.poll() is None:
             return
 
-        creationflags = 0
-        startupinfo = None
-
-        if os.name == "nt":
-            creationflags = subprocess.CREATE_NO_WINDOW
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            startupinfo.wShowWindow = subprocess.SW_HIDE
-
-        self.proc = subprocess.Popen(
+        self.proc = popen_hidden(
             [self.command] + self.args,
             cwd=self.cwd,
             env=self.env,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
             bufsize=1,
-            creationflags=creationflags,
-            startupinfo=startupinfo
         )
 
         self.reader_thread = threading.Thread(target=self._reader, daemon=True)

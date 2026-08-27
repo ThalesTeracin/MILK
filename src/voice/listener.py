@@ -1,37 +1,15 @@
 import json
-import os
+import subprocess
 import tempfile
 import wave
-import subprocess
 from pathlib import Path
 
 import numpy as np
 import sounddevice as sd
 
+from core.proc import popen_hidden
+
 CONFIG = Path("config/whisper_local.json")
-
-# Windows flags
-CREATE_NO_WINDOW = 0x08000000
-DETACHED_PROCESS = 0x00000008
-STARTF_USESHOWWINDOW = 0x00000001
-SW_HIDE = 0
-
-def _windows_hidden_kwargs():
-    """
-    Force a console executable to run without creating/attaching a visible
-    console window. Uses both CREATE_NO_WINDOW and SW_HIDE.
-    """
-    if os.name != "nt":
-        return {}
-
-    si = subprocess.STARTUPINFO()
-    si.dwFlags |= STARTF_USESHOWWINDOW
-    si.wShowWindow = SW_HIDE
-
-    return {
-        "creationflags": CREATE_NO_WINDOW,
-        "startupinfo": si,
-    }
 
 class NaturalVoiceListener:
     def __init__(self):
@@ -99,17 +77,12 @@ class NaturalVoiceListener:
         Execute whisper-cli directly, never through cmd.exe, PowerShell,
         Windows Terminal or shell=True.
         """
-        kwargs = _windows_hidden_kwargs()
-
-        p = subprocess.Popen(
+        p = popen_hidden(
             cmd,
-            cwd=str(self.exe.parent),
+            cwd=self.exe.parent,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
-            shell=False,
-            **kwargs
         )
 
         try:
