@@ -1,3 +1,12 @@
+# =============================================================================
+# SUBSTITUÍDO (Fase 3 - unificação de entry points, 2026-08-27).
+# Este arquivo era um segundo "cérebro" duplicado (loop de voz próprio, sem
+# o NLU completo nem o PermissionManager da Fase 2), iniciado manualmente
+# pelo botão "Iniciar" do MILK_Command_Center.py. Não é mais chamado como
+# processo independente -- use `python src/main.py`, que roda o MilkCore
+# completo (NLU + gate de permissão + memória) dentro do processo único.
+# Mantido apenas como referência histórica.
+# =============================================================================
 import sys
 from pathlib import Path
 

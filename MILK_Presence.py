@@ -1,3 +1,12 @@
+# =============================================================================
+# SUBSTITUÍDO (Fase 3 - unificação de entry points, 2026-08-27).
+# Este arquivo não é mais iniciado como processo independente. A lógica de
+# overlay/avatar + wake word foi migrada para src/presence/unified_app.py,
+# que roda dentro do processo único iniciado por src/main.py, reaproveitando
+# o mesmo MilkCore (cérebro + NLU + gate de permissão) em vez de duplicar
+# NaturalVoiceListener/NaturalSpeaker próprios como este arquivo fazia.
+# Mantido apenas como referência histórica. Não editar/usar como entry point.
+# =============================================================================
 import os
 import sys
 import time

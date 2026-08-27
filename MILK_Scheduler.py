@@ -1,3 +1,10 @@
+# =============================================================================
+# SUBSTITUÍDO (Fase 3 - unificação de entry points, 2026-08-27).
+# Não é mais iniciado como processo independente (pythonw MILK_Scheduler.py).
+# A função run() abaixo continua sendo usada, mas agora é importada e
+# chamada em uma thread por src/presence/unified_app.py, dentro do processo
+# único iniciado por src/main.py. Mantido como referência/módulo reutilizável.
+# =============================================================================
 import json
 import subprocess
 import time

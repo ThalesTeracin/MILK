@@ -1,3 +1,14 @@
+# =============================================================================
+# PAPEL ALTERADO (Fase 3 - unificação de entry points, 2026-08-27).
+# Não faz mais parte do conjunto "sempre ativo" em background -- o
+# assistente em si (cérebro + overlay + scheduler) roda como processo único
+# via src/main.py (ver src/presence/unified_app.py), supervisionado por
+# Tarefa Agendada do Windows (ver installer/registrar_tarefa_agendada.ps1).
+# Este arquivo continua existindo apenas como painel manual/on-demand
+# (status, logs, atalhos) que o usuário abre quando quiser -- não é mais
+# iniciado automaticamente e não deve ser tratado como entry point do
+# assistente. O botão "iniciar assistente" agora chama src/main.py.
+# =============================================================================
 import os
 import sys
 import time
@@ -370,16 +381,22 @@ class MilkCommandCenter(tk.Tk):
         self.console.configure(state="disabled")
 
     def start_assistant(self):
+        # Fase 3 (2026-08-27): antes iniciava Conversar_Com_MILK.py, um
+        # "cérebro" duplicado sem NLU completo nem gate de permissão. Agora
+        # inicia src/main.py --headless, que usa o MilkCore real (NLU +
+        # PermissionManager). Se o processo único (src/main.py, com overlay)
+        # já estiver rodando via Tarefa Agendada, NÃO clique aqui -- rodar
+        # dois MilkCore ao mesmo tempo disputa o mesmo microfone.
         if self.assistant_proc and self.assistant_proc.poll() is None:
             self._log("MILK já está em execução.")
             return
-        script = ROOT / "Conversar_Com_MILK.py"
+        script = ROOT / "src" / "main.py"
         if not script.exists():
-            messagebox.showerror("MILK", "Conversar_Com_MILK.py não encontrado em C:\\JARVIS")
+            messagebox.showerror("MILK", "src/main.py não encontrado em C:\\JARVIS")
             return
         try:
             self.assistant_proc = subprocess.Popen(
-                [sys.executable, "-u", str(script)],
+                [sys.executable, "-u", str(script), "--headless"],
                 cwd=str(ROOT),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
