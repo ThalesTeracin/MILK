@@ -1,0 +1,40 @@
+ROADMAP SUGERIDO
+
+FASE 12 — Coding Agent real
+Criar/editar arquivos, executar projeto, instalar dependências, rodar testes e corrigir erros.
+
+FASE 13 — Computer Use
+Screenshot, visão da tela, mouse/teclado, fallback visual quando Playwright não resolver.
+
+FASE 14 — Browser Agent
+Playwright, logins persistentes, formulários, downloads e uploads.
+
+FASE 15 — Memória longa
+SQLite + memória vetorial opcional + projetos + decisões + preferências.
+
+FASE 16 — E-mail e calendário
+Gmail + Outlook/Microsoft Graph + agenda + resumos + rascunhos.
+
+FASE 17 — Documentos
+PDF, DOCX, planilhas, relatórios e apresentações reais.
+
+FASE 18 — DevOps
+Git/GitHub, builds, deploy, logs, CI/CD e rollback.
+
+FASE 19 — Segurança e Recovery
+Snapshots, undo, auditoria, sandbox, permissões por risco e kill switch.
+
+FASE 20 — Interface visual
+Dashboard estilo command center, agentes ativos, memória, tarefas, CPU/RAM, logs.
+
+FASE 21 — Scheduler
+Tarefas recorrentes, rotinas, lembretes e monitoramento em segundo plano.
+
+FASE 22 — Plugins/MCP
+MCPs, conectores, ferramentas externas e marketplace interno.
+
+FASE 23 — Self Review avançado
+Crítico, advogado, sintetizador, root-cause e QA antes da entrega.
+
+FASE 24 — Parallel Tasks
+Fila, workers e execução paralela controlada de múltiplas tarefas.

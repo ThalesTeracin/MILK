@@ -1,0 +1,104 @@
+[
+  {
+    "id": "architect",
+    "name": "ARCHITECT",
+    "role": "Arquitetura de sistemas",
+    "enabled": true
+  },
+  {
+    "id": "developer",
+    "name": "DEVELOPER",
+    "role": "Programação e implementação",
+    "enabled": true
+  },
+  {
+    "id": "ux_designer",
+    "name": "UX DESIGNER",
+    "role": "Interface e experiência do usuário",
+    "enabled": true
+  },
+  {
+    "id": "qa_tester",
+    "name": "QA TESTER",
+    "role": "Testes e qualidade",
+    "enabled": true
+  },
+  {
+    "id": "project_manager",
+    "name": "PROJECT MANAGER",
+    "role": "Planejamento e coordenação",
+    "enabled": true
+  },
+  {
+    "id": "product_owner",
+    "name": "PRODUCT OWNER",
+    "role": "Escopo e priorização",
+    "enabled": true
+  },
+  {
+    "id": "scrum_master",
+    "name": "SCRUM MASTER",
+    "role": "Fluxo de trabalho",
+    "enabled": true
+  },
+  {
+    "id": "analyst",
+    "name": "ANALYST",
+    "role": "Pesquisa e análise",
+    "enabled": true
+  },
+  {
+    "id": "devops",
+    "name": "DEVOPS",
+    "role": "Deploy e infraestrutura",
+    "enabled": true
+  },
+  {
+    "id": "data_engineer",
+    "name": "DATA ENGINEER",
+    "role": "Dados, banco e pipelines",
+    "enabled": true
+  },
+  {
+    "id": "conclave_critic",
+    "name": "CONCLAVE CRÍTICO",
+    "role": "Procura falhas e riscos",
+    "enabled": true
+  },
+  {
+    "id": "conclave_advocate",
+    "name": "CONCLAVE ADVOGADO",
+    "role": "Questiona e testa a proposta",
+    "enabled": true
+  },
+  {
+    "id": "conclave_synthesizer",
+    "name": "CONCLAVE SINTETIZADOR",
+    "role": "Integra a melhor solução",
+    "enabled": true
+  },
+  {
+    "id": "aios_master",
+    "name": "AIOS MASTER",
+    "role": "Orquestra agentes e squads",
+    "enabled": true
+  },
+  {
+    "id": "squad_creator",
+    "name": "SQUAD CREATOR",
+    "role": "Monta equipe conforme a tarefa",
+    "enabled": true
+  },
+  {
+    "id": "milk_soul",
+    "name": "MILK SOUL",
+    "role": "Identidade, tom e preferências",
+    "enabled": true
+  },
+  {
+    "id": "rootcause",
+    "name": "ROOTCAUSE",
+    "role": "Diagnóstico de erros e causa raiz",
+    "enabled": true
+  }
+]

@@ -1,0 +1,5 @@
+32 — Instalador final + atualização segura
+33 — Integração profunda Presence + Avatar + Skills
+34 — Memória semântica / embeddings locais
+35 — Automação avançada por rotinas
+36 — Hardening / auditoria / logs completos

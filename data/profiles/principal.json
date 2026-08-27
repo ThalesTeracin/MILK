@@ -1,0 +1,10 @@
+{
+  "id": "principal",
+  "display_name": "Usuário Principal",
+  "created": "2026-08-27T18:44:17",
+  "preferences": {
+    "language": "pt-BR",
+    "voice": "default",
+    "permission_profile": "balanced"
+  }
+}

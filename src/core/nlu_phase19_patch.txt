@@ -1,0 +1,31 @@
+Adicionar estes intents à NLU da MILK:
+
+git_status
+git_init
+git_branch_create
+git_branch_switch
+git_diff
+git_add_all
+git_commit
+git_log
+git_test
+git_push
+github_repo_create
+github_pr_create
+
+Exemplos:
+"mostra o status do git" -> git_status
+"inicia git nesse projeto" -> git_init
+"cria branch feature-login" -> git_branch_create
+"muda para branch main" -> git_branch_switch
+"mostra o diff" -> git_diff
+"adiciona todas as alterações" -> git_add_all
+"faz commit mensagem ajuste login" -> git_commit
+"mostra os últimos commits" -> git_log
+"roda os testes do projeto" -> git_test
+"envia para o github" -> git_push
+"cria repositório github milk-demo" -> github_repo_create
+"cria pull request" -> github_pr_create
+
+IMPORTANTE:
+git_push, github_repo_create e github_pr_create devem exigir confirmação explícita.

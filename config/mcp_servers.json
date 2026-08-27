@@ -1,0 +1,15 @@
+{
+  "servers": [
+    {
+      "name": "milk_mock",
+      "enabled": true,
+      "trusted": true,
+      "command": "python",
+      "args": [
+        "C:\\JARVIS\\plugins\\mock_mcp_server.py"
+      ],
+      "cwd": "C:\\JARVIS",
+      "always_confirm": []
+    }
+  ]
+}

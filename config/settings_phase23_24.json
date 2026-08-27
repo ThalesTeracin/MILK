@@ -1,0 +1,30 @@
+{
+  "phase": "23+24",
+  "self_review": {
+    "enabled": true,
+    "deterministic_review": true,
+    "ai_review_optional": true,
+    "must_have_evidence": true,
+    "do_not_claim_success_without_evidence": true
+  },
+  "parallelism": {
+    "enabled": true,
+    "max_workers": 3,
+    "max_workers_hard_limit": 4,
+    "safe_parallel_examples": [
+      "read_files",
+      "analyze_logs",
+      "status_checks",
+      "non_mutating_tests"
+    ],
+    "sequential_only_examples": [
+      "delete",
+      "write_sensitive",
+      "admin",
+      "push",
+      "deploy",
+      "send_email",
+      "system_change"
+    ]
+  }
+}

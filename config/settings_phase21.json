@@ -1,0 +1,21 @@
+{
+  "phase": 21,
+  "presence_mode": true,
+  "wake_word": "MILK",
+  "wake_aliases": [
+    "milk",
+    "milki",
+    "milque",
+    "milky"
+  ],
+  "auto_appear": true,
+  "frameless_overlay": true,
+  "transparent_background": true,
+  "greeting_on_wake": true,
+  "continuous_conversation_after_wake": true,
+  "idle_timeout_seconds": 90,
+  "fade_in_out": true,
+  "always_on_top_when_visible": true,
+  "scheduler": true,
+  "windows_startup_optional": true
+}

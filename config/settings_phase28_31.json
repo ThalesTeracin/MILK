@@ -1,0 +1,23 @@
+{
+  "phase": "28+29+30+31",
+  "phase28": {
+    "local_kb": true,
+    "rag": true,
+    "offline_search": true
+  },
+  "phase29": {
+    "animated_avatar": true,
+    "runtime_state": true,
+    "visual_lipsync_proxy": true
+  },
+  "phase30": {
+    "mini_overlay": true,
+    "transparent": true,
+    "always_on_top": true
+  },
+  "phase31": {
+    "skills": true,
+    "mcp_routing": true,
+    "safe_confirmation": true
+  }
+}

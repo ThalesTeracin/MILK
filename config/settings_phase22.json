@@ -1,0 +1,11 @@
+{
+  "phase": 22,
+  "mcp": true,
+  "plugin_registry": true,
+  "stdio_json_rpc": true,
+  "tool_discovery": true,
+  "safe_tool_calls": true,
+  "confirmation_for_risky_tools": true,
+  "mock_server_for_validation": true,
+  "arbitrary_shell_from_llm": false
+}

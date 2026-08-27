@@ -1,0 +1,236 @@
+from datetime import datetime
+from devops.devops_manager import DevOpsManager
+from voice.listener import NaturalVoiceListener
+from voice.speaker import NaturalSpeaker
+from agents.windows_agent import WindowsAgent
+from ai.router import AIRouter
+from core.nlu import NaturalLanguageInterpreter
+from browser.browser_agent import BrowserAgent
+from vision.screen_agent import ScreenAgent
+from coding.coding_agent_v2 import CodingAgentV2
+from memory.memory_manager import MemoryManager
+
+class MilkCore:
+    def __init__(self):
+        self.state="sleep"
+        self.running=True
+        self.devops = DevOpsManager()
+        self.voice=NaturalVoiceListener()
+        self.speaker=NaturalSpeaker()
+        self.windows=WindowsAgent()
+        self.ai=AIRouter()
+        self.nlu=NaturalLanguageInterpreter(self.ai)
+        self.browser=BrowserAgent()
+        self.screen=ScreenAgent(self.ai)
+        self.coder=CodingAgentV2(self.ai,max_repair_loops=2)
+        self.memory=MemoryManager()
+
+    def say(self,text):
+        self.speaker.say(text)
+        try:
+            self.memory.assistant_message(text)
+        except Exception:
+            pass
+
+    def handle(self,text):
+        if not text:
+            return
+
+        print("Você disse:",text)
+
+        try:
+            self.memory.user_message(text)
+        except Exception:
+            pass
+
+        low=text.lower().strip()
+
+        if self.state=="sleep":
+            if "milk" in low:
+                self.state="ready"
+                rest=low.replace("milk","",1).strip(" ,.-")
+                if not rest:
+                    self.say("Estou ouvindo.")
+                    return
+                text=rest
+            else:
+                return
+
+        # comandos locais de memória
+        if "quais projetos" in low or "meus projetos" in low:
+            projects=self.memory.long.list_projects(limit=8)
+            if not projects:
+                self.say("Ainda não tenho projetos registrados na memória longa.")
+            else:
+                names=", ".join(p["name"] for p in projects)
+                self.say(f"Os projetos mais recentes são: {names}.")
+            return
+
+        if "status da memória" in low or "status da memoria" in low:
+            st=self.memory.long.stats()
+            self.say(
+                f"Tenho {st['conversations']} mensagens, "
+                f"{st['projects']} projetos, "
+                f"{st['decisions']} decisões e "
+                f"{st['errors']} erros registrados."
+            )
+            return
+
+        # confirmação browser
+        if low in ["confirmar","confirmo","pode enviar","confirmar envio"]:
+            try:
+                pending=getattr(self, "_pending_browser_action", None)
+                if pending=="submit":
+                    reply=self.browser.submit()
+                    self._pending_browser_action=None
+                    self.say(reply)
+                    return
+            except Exception:
+                pass
+
+        result=self.nlu.interpret(text)
+        intent=result.get("intent","unknown")
+
+        if intent=="sleep":
+            self.state="sleep"
+            self.say("Tudo bem. Vou ficar em espera.")
+            return
+
+        if intent=="exit":
+            try:
+                self.browser.close()
+            except Exception:
+                pass
+            self.say("Certo. Encerrando por agora.")
+            self.running=False
+            return
+
+        if intent=="open_app":
+            self.say(self.windows.open_target(result.get("target")))
+            return
+
+        if intent=="system_status":
+            self.say(self.windows.system_status())
+            return
+
+        if intent=="top_processes":
+            self.say(self.windows.top_processes())
+            return
+
+        if intent=="coding_task":
+            task=result.get("task") or text
+            self.say("Vou criar, validar e tentar corrigir automaticamente.")
+            build=self.coder.build_and_repair(task)
+            print("[CODING V2]",build)
+
+            if build.get("project"):
+                try:
+                    self.memory.remember_project_from_build(build)
+                except Exception:
+                    pass
+
+            if build.get("ok"):
+                self.say(f"Projeto pronto em {build.get('project')}. Os testes e a validação passaram.")
+            else:
+                if build.get("project"):
+                    self.say(f"Criei o projeto em {build.get('project')}, mas ainda restaram erros para revisar.")
+                else:
+                    self.say(build.get("message","Não consegui concluir o projeto."))
+            return
+
+        if intent=="browser_open":
+            url=result.get("url") or result.get("target")
+            if not url:
+                self.say("Qual site você quer abrir?")
+                return
+            self.say(self.browser.open_url(url))
+            return
+
+        if intent=="browser_search":
+            query=result.get("query") or result.get("task") or result.get("text")
+            self.say(self.browser.search(query))
+            return
+
+        if intent=="browser_click_text":
+            self.say(self.browser.click_text(result.get("text") or result.get("target")))
+            return
+
+        if intent=="browser_fill":
+            self.say(self.browser.fill(
+                result.get("field") or "campo",
+                result.get("value") or result.get("text") or ""
+            ))
+            return
+
+        if intent=="browser_submit":
+            self._pending_browser_action="submit"
+            self.say("Essa ação pode enviar dados. Diga confirmar para continuar.")
+            return
+
+        if intent=="browser_read":
+            body=self.browser.read_page()
+            if self.ai.enabled:
+                summary=self.ai.chat(
+                    "Resuma esta página em português brasileiro, no máximo 5 frases.",
+                    body,
+                    history=self.memory.context_for_ai(),
+                    max_tokens=220
+                )
+                self.say(summary or body[:700])
+            else:
+                self.say(body[:700])
+            return
+
+        if intent=="browser_back":
+            self.say(self.browser.back())
+            return
+
+        if intent=="browser_close":
+            self.say(self.browser.close())
+            return
+
+        if intent=="chat":
+            reply=result.get("reply")
+            if not reply and self.ai.enabled:
+                reply=self.ai.chat(
+                    "Você é MILK, assistente de voz em português brasileiro. "
+                    "Use o contexto recente, mas seja breve.",
+                    text,
+                    history=self.memory.context_for_ai(),
+                    max_tokens=320
+                )
+            self.say(reply or "Não consegui responder agora.")
+            return
+
+        if self.ai.enabled:
+            reply=self.ai.chat(
+                "Você é MILK. Responda naturalmente em português brasileiro. "
+                "Use o contexto recente e não repita informações desnecessárias.",
+                text,
+                history=self.memory.context_for_ai(),
+                max_tokens=320
+            )
+            self.say(reply or "Não consegui interpretar esse pedido agora.")
+        else:
+            self.say("O roteador de inteligência artificial ainda não está configurado.")
+
+    def start(self):
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] MILK Fase 16 iniciado.")
+        print("Memória longa SQLite + contexto compacto.")
+        print("Provedores:",self.ai.status())
+        print("Diga MILK uma vez. Depois fale normalmente.")
+        try:
+            while self.running:
+                heard=self.voice.listen()
+                if heard:
+                    self.handle(heard)
+        except KeyboardInterrupt:
+            try:
+                self.browser.close()
+            except Exception:
+                pass
+            try:
+                self.memory.long.close()
+            except Exception:
+                pass
+            print("\nMILK encerrado.")

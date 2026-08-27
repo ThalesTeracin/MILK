@@ -1,0 +1,43 @@
+{
+  "profiles": {
+    "safe": {
+      "confirm": [
+        "write_file",
+        "git_commit",
+        "open_admin"
+      ],
+      "deny": [
+        "delete_file",
+        "git_push",
+        "deploy",
+        "send_email",
+        "system_change",
+        "arbitrary_shell"
+      ]
+    },
+    "balanced": {
+      "confirm": [
+        "delete_file",
+        "git_push",
+        "deploy",
+        "send_email",
+        "open_admin",
+        "system_change"
+      ],
+      "deny": [
+        "arbitrary_shell"
+      ]
+    },
+    "developer": {
+      "confirm": [
+        "delete_file",
+        "deploy",
+        "send_email",
+        "system_change"
+      ],
+      "deny": [
+        "arbitrary_shell"
+      ]
+    }
+  }
+}

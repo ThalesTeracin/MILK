@@ -1,0 +1,16 @@
+{
+  "phase": "25+26+27",
+  "recovery_undo": true,
+  "permission_profiles": [
+    "safe",
+    "balanced",
+    "developer"
+  ],
+  "packaging": {
+    "pyinstaller": true,
+    "windowed": true,
+    "console_hidden": true
+  },
+  "user_profiles": true,
+  "whisper_console_fix": true
+}

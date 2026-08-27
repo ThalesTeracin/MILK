@@ -1,0 +1,179 @@
+import json
+import os
+import tempfile
+import wave
+import subprocess
+from pathlib import Path
+
+import numpy as np
+import sounddevice as sd
+
+CONFIG = Path("config/whisper_local.json")
+
+# Windows flags
+CREATE_NO_WINDOW = 0x08000000
+DETACHED_PROCESS = 0x00000008
+STARTF_USESHOWWINDOW = 0x00000001
+SW_HIDE = 0
+
+def _windows_hidden_kwargs():
+    """
+    Force a console executable to run without creating/attaching a visible
+    console window. Uses both CREATE_NO_WINDOW and SW_HIDE.
+    """
+    if os.name != "nt":
+        return {}
+
+    si = subprocess.STARTUPINFO()
+    si.dwFlags |= STARTF_USESHOWWINDOW
+    si.wShowWindow = SW_HIDE
+
+    return {
+        "creationflags": CREATE_NO_WINDOW,
+        "startupinfo": si,
+    }
+
+class NaturalVoiceListener:
+    def __init__(self):
+        if not CONFIG.exists():
+            raise RuntimeError(
+                "Whisper não configurado. Arquivo config/whisper_local.json ausente."
+            )
+
+        cfg = json.loads(CONFIG.read_text(encoding="utf-8-sig"))
+        self.exe = Path(cfg["whisper_exe"]).resolve()
+        self.model = Path(cfg["model"]).resolve()
+        self.language = cfg.get("language", "pt")
+        self.seconds = int(cfg.get("seconds", 6))
+
+        if not self.exe.exists():
+            raise RuntimeError(f"whisper-cli não encontrado: {self.exe}")
+        if not self.model.exists():
+            raise RuntimeError(f"modelo não encontrado: {self.model}")
+
+        info = sd.query_devices(None, "input")
+        self.native_rate = int(float(info.get("default_samplerate", 44100)))
+        self.device_name = info.get("name", "Microfone padrão")
+
+        print(f"🎤 Microfone: {self.device_name}")
+        print(f"🎤 Taxa nativa: {self.native_rate} Hz")
+        print("🧠 STT: whisper.cpp")
+        print("🪟 Whisper: modo invisível forçado")
+
+    def calibrate(self, seconds=0):
+        print("✅ Whisper pronto.")
+
+    def _resample_to_16k(self, audio):
+        if self.native_rate == 16000:
+            return audio.astype(np.int16)
+
+        x = np.asarray(audio, dtype=np.float32).reshape(-1)
+        if len(x) == 0:
+            return np.array([], dtype=np.int16)
+
+        new_len = max(1, int(len(x) * 16000 / self.native_rate))
+        old_idx = np.arange(len(x), dtype=np.float32)
+        new_idx = np.linspace(0, len(x)-1, new_len, dtype=np.float32)
+        y = np.interp(new_idx, old_idx, x)
+        return np.clip(y, -32768, 32767).astype(np.int16)
+
+    def _record(self):
+        frames = int(self.native_rate * self.seconds)
+        audio = sd.rec(
+            frames,
+            samplerate=self.native_rate,
+            channels=1,
+            dtype="int16",
+            device=None
+        )
+        sd.wait()
+
+        rms = float(np.sqrt(np.mean(np.asarray(audio, dtype=np.float32) ** 2)))
+        if rms < 15:
+            return None
+
+        return self._resample_to_16k(audio)
+
+    def _run_whisper_hidden(self, cmd):
+        """
+        Execute whisper-cli directly, never through cmd.exe, PowerShell,
+        Windows Terminal or shell=True.
+        """
+        kwargs = _windows_hidden_kwargs()
+
+        p = subprocess.Popen(
+            cmd,
+            cwd=str(self.exe.parent),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            shell=False,
+            **kwargs
+        )
+
+        try:
+            out, err = p.communicate(timeout=120)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            out, err = p.communicate()
+            raise RuntimeError("Whisper excedeu o tempo limite.")
+
+        return p.returncode, out or "", err or ""
+
+    def listen(self):
+        print(f"🟢 Fale normalmente por até {self.seconds} segundos...")
+
+        try:
+            audio = self._record()
+        except Exception as e:
+            print(f"❌ Erro no microfone: {e}")
+            return None
+
+        if audio is None or len(audio) == 0:
+            print("⚠️ Nenhuma fala detectada.")
+            return None
+
+        with tempfile.TemporaryDirectory(prefix="milk_whisper_") as td:
+            td = Path(td)
+            wav = td / "input.wav"
+            out_prefix = td / "result"
+
+            with wave.open(str(wav), "wb") as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(16000)
+                wf.writeframes(audio.tobytes())
+
+            cmd = [
+                str(self.exe),
+                "-m", str(self.model),
+                "-f", str(wav),
+                "-l", self.language,
+                "-nt",
+                "-otxt",
+                "-of", str(out_prefix),
+            ]
+
+            try:
+                code, out, err = self._run_whisper_hidden(cmd)
+            except Exception as e:
+                print(f"❌ Whisper falhou: {e}")
+                return None
+
+            txt = Path(str(out_prefix) + ".txt")
+            text = txt.read_text(
+                encoding="utf-8",
+                errors="ignore"
+            ).strip() if txt.exists() else ""
+
+            if not text:
+                detail = (err or out).strip()
+                if detail:
+                    print("⚠️ Whisper:", detail[-500:])
+                else:
+                    print(f"⚠️ Whisper não reconheceu palavras. Código: {code}")
+                return None
+
+            print(f"🗣️ Reconhecido: {text}")
+            return text

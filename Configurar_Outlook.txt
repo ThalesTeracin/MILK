@@ -1,0 +1,12 @@
+OUTLOOK / MICROSOFT 365
+
+1. Registre um aplicativo no Microsoft Entra.
+2. Tipo: Public client / desktop.
+3. Copie o Application (client) ID.
+4. Crie:
+   C:\JARVIS\config\microsoft_oauth.json
+5. Use como modelo:
+   config\microsoft_oauth.example.json
+6. Na primeira execução, a MILK mostrará um código de login.
+
+A MILK cria rascunhos; envio automático não é habilitado nesta fase.

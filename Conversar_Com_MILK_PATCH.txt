@@ -1,0 +1,14 @@
+No Conversar_Com_MILK.py, a Fase 18.12 corrige a lógica do AIRouter e NLU.
+Não precisa alterar o Whisper.
+
+ANTES de iniciar a conversa, rode:
+python .\Testar_AgentRouter.py
+
+Só prossiga quando aparecer:
+✅ CONEXÃO COM IA FUNCIONANDO.
+
+Se funcionar, rode normalmente:
+python .\Conversar_Com_MILK.py
+
+Caso a NLU não consiga retornar JSON, o programa passa a tentar conversa normal
+em vez de afirmar incorretamente que a IA não está configurada.

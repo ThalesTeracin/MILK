@@ -1,0 +1,10 @@
+Adicione ao SYSTEM da NLU:
+intent: document_create
+
+Exemplos:
+"cria um PDF sobre segurança da informação" -> document_create
+"faz um documento Word com meu relatório" -> document_create
+"monta uma planilha de gastos" -> document_create
+"faz uma apresentação de 10 slides sobre AWS" -> document_create
+
+Em document_create, coloque a solicitação completa em task.

@@ -1,0 +1,11 @@
+Adicione estes intents ao SYSTEM da NLU existente:
+email_summary
+email_search
+email_draft
+calendar_upcoming
+
+Exemplos:
+"resume meus emails de hoje" -> email_summary
+"procura email da escola da nuvem" -> email_search query="Escola da Nuvem"
+"faz um rascunho para fulano" -> email_draft
+"o que tenho na agenda" -> calendar_upcoming

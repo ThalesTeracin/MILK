@@ -1,0 +1,13 @@
+{
+  "phase": 19,
+  "git": true,
+  "github_cli": true,
+  "devops": true,
+  "safe_mode": true,
+  "requires_confirmation": [
+    "git_push",
+    "github_repo_create",
+    "github_pr_create"
+  ],
+  "default_projects_root": "C:\\JARVIS\\projects"
+}

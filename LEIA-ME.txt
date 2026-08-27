@@ -1,0 +1,20 @@
+CORREÇÃO WHISPER ARM64
+
+Erro corrigido:
+MSVC is not supported for ARM, use clang
+
+A correção instala o componente oficial LLVM/Clang do Visual Studio
+e compila whisper.cpp usando:
+
+-G "Visual Studio 17 2022"
+-A ARM64
+-T ClangCL
+
+PASSOS:
+1. Copie estes dois arquivos para C:\JARVIS
+2. Clique com o botão direito em:
+   CORRIGIR_WHISPER_ARM64_CLANG.bat
+3. Aguarde terminar.
+4. Rode:
+   cd C:\JARVIS
+   python .\Conversar_Com_MILK.py

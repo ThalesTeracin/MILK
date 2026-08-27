@@ -1,0 +1,17 @@
+{
+  "phase": 20,
+  "command_center": true,
+  "avatar_alive": true,
+  "avatar_animation": "pulse",
+  "system_monitor": true,
+  "memory_panel": true,
+  "projects_panel": true,
+  "git_github_panel": true,
+  "ai_provider_panel": true,
+  "voice_status": true,
+  "whisper_status": true,
+  "9router_dashboard_button": true,
+  "integrates_existing_conversation_script": true,
+  "does_not_replace_whisper": true,
+  "does_not_replace_9router": true
+}

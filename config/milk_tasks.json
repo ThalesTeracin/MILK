@@ -1,0 +1,8 @@
+[
+  {
+    "name": "Exemplo - abrir Command Center",
+    "time": "09:00",
+    "command": "python C:\\JARVIS\\MILK_Command_Center.py",
+    "enabled": false
+  }
+]

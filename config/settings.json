@@ -1,0 +1,15 @@
+{
+  "phase": 16,
+  "assistant_name": "MILK",
+  "long_memory": true,
+  "memory_engine": "SQLite",
+  "memory_db": "C:\\JARVIS\\data\\milk_memory.db",
+  "conversation_history_limit_for_ai": 8,
+  "project_memory": true,
+  "decision_memory": true,
+  "error_memory": true,
+  "token_saving_context": true,
+  "coding_agent_v2": true,
+  "browser_agent": true,
+  "computer_use_v1": true
+}

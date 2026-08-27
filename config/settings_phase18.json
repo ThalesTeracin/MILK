@@ -1,0 +1,14 @@
+{
+  "phase": 18,
+  "documents": {
+    "docx": true,
+    "pdf": true,
+    "xlsx": true,
+    "pptx": true,
+    "output_dir": "C:\\JARVIS\\output"
+  },
+  "limits": {
+    "max_spreadsheet_rows": 200,
+    "max_slides": 20
+  }
+}

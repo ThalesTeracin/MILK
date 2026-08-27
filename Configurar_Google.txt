@@ -1,0 +1,12 @@
+GOOGLE / GMAIL / CALENDAR
+
+1. Crie um OAuth Client Desktop no Google Cloud.
+2. Ative Gmail API e Google Calendar API.
+3. Baixe o JSON de credenciais.
+4. Salve como:
+   C:\JARVIS\config\google_credentials.json
+5. Na primeira execução, o navegador abrirá para autorizar.
+6. O token ficará local em:
+   C:\JARVIS\data\google_token.json
+
+A MILK cria rascunhos; envio automático não é habilitado nesta fase.

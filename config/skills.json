@@ -1,0 +1,44 @@
+{
+  "skills": [
+    {
+      "name": "system_status",
+      "type": "builtin",
+      "safe": true
+    },
+    {
+      "name": "git_status",
+      "type": "builtin",
+      "safe": true
+    },
+    {
+      "name": "open_projects",
+      "type": "builtin",
+      "safe": true
+    },
+    {
+      "name": "web_search",
+      "type": "builtin",
+      "safe": true
+    },
+    {
+      "name": "git_push",
+      "type": "restricted",
+      "safe": false
+    },
+    {
+      "name": "deploy",
+      "type": "restricted",
+      "safe": false
+    },
+    {
+      "name": "send_email",
+      "type": "restricted",
+      "safe": false
+    },
+    {
+      "name": "system_change",
+      "type": "restricted",
+      "safe": false
+    }
+  ]
+}

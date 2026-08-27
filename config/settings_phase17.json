@@ -1,0 +1,22 @@
+{
+  "phase": 17,
+  "voice_fix": {
+    "adaptive_calibration": true,
+    "lower_start_threshold": true,
+    "wake_aliases": [
+      "milk",
+      "milki",
+      "milque"
+    ]
+  },
+  "email": {
+    "gmail": true,
+    "outlook": true,
+    "draft_only_by_default": true,
+    "send_requires_confirmation": true
+  },
+  "calendar": {
+    "google_calendar": true,
+    "outlook_calendar": true
+  }
+}
