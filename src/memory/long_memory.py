@@ -80,7 +80,15 @@ class LongMemory:
     def __init__(self, db_path="data/milk_memory.db"):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(self.db_path)
+        # check_same_thread=False: desde a Fase 33 (Task 6) esta conexão
+        # nasce na thread principal (MilkCore -> MemoryManager, no
+        # __init__ de UnifiedApp) mas é usada pela thread de trabalho do
+        # overlay (_trabalho_passo), que roda handle() fora do Tk. Sem o
+        # parâmetro, o sqlite3 recusa qualquer uso fora da thread de
+        # origem com ProgrammingError. Não é preciso lock por cima: nesta
+        # máquina sqlite3.threadsafety == 3 (serialized), a própria
+        # biblioteca já serializa o acesso.
+        self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
         self._migrate()

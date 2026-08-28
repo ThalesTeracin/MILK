@@ -100,6 +100,10 @@ class UnifiedApp:
         self.photo = None
         self.base_img = None
         self.pulse = 0
+        # Correção 1 da Task 6, achado 3: trava o fade-in a uma tentativa
+        # por ciclo acordado (ver _idle_watch), pra não retentar a cada
+        # segundo pra sempre se _ensure_overlay()/deiconify() falhar.
+        self._fade_in_tentado = False
 
         self._load_avatar()
 
@@ -212,14 +216,14 @@ class UnifiedApp:
             # Fase 6, item 4: velocidade/profundidade do pulso e cor do
             # rótulo variam com core.activity_state (ouvindo/pensando/
             # falando), atualizado pelo loop de escuta e por MilkCore.say().
-            # Limitação conhecida: handle() roda de forma síncrona na
-            # mesma thread do Tk, então durante uma chamada de IA longa o
-            # after() deste método fica parado -- a cor/rótulo já mudou
-            # para "pensando" antes do bloqueio, mas o pulso não anima
-            # durante a espera. Ainda assim é uma melhora real sobre o
-            # pulso único e estático que existia antes.
-            # Mesmo motivo de _poll_events: sem esta proteção, um erro aqui
-            # congelaria o avatar de vez, em vez de custar um quadro.
+            # Fase 33, Task 6: handle() saiu da thread do Tk -- quem chama
+            # o cérebro agora é _trabalho_loop/_trabalho_passo, numa thread
+            # própria. Este after() nunca mais fica parado esperando uma
+            # chamada de IA: o pulso continua se movendo durante o
+            # "pensando", que era exatamente o congelamento que a Task 6
+            # existiu para tirar.
+            # O try/except protege só o desenho em si: um erro aqui custa
+            # um quadro perdido, em vez de congelar o avatar de vez.
             try:
                 activity = atividade()
                 step, depth = PULSE_BY_ACTIVITY.get(activity, PULSE_DEFAULT)
@@ -303,27 +307,63 @@ class UnifiedApp:
             self.core.handle(text)
         except Exception:
             _log(f"Erro ao tratar {text!r}:\n{traceback.format_exc()}")
+        finally:
+            # Correção 1 da Task 6, achado 3: um handle() longo (ex.:
+            # coding_task com build_and_repair) pode passar dos 90s de
+            # idle_timeout enquanto ainda está rodando. Sem recarimbar
+            # aqui, o _idle_watch -- que agora roda em paralelo, não mais
+            # bloqueado pelo handle() como antes desta task -- decreta
+            # sleep e some com o avatar no meio do trabalho. Recarimba
+            # aconteça o que acontecer, sucesso ou exceção.
+            self.last_activity = time.time()
 
     def _idle_watch(self):
         # Aparecer e sumir virou consequência do estado, não do comando: a
         # thread de trabalho não pode tocar em Tkinter, então quem decide
         # é este laço, que já roda na thread do Tk de segundo em segundo.
         try:
-            if self.core.state == "sleep" and self.visible:
-                self._fade_out()
-            elif self.core.state != "sleep" and not self.visible:
-                self._fade_in()
+            if self.core.state == "sleep":
+                # Reseta a trava de tentativa única do fade-in a cada
+                # volta em que a MILK está dormindo: a próxima vez que
+                # ela acordar merece uma tentativa nova, mesmo que a
+                # tentativa anterior (de um ciclo acordado passado) tenha
+                # falhado.
+                self._fade_in_tentado = False
+                if self.visible:
+                    self._fade_out()
+            elif not self.visible:
+                # Correção 1 da Task 6, achado 2: self.visible só vira
+                # True depois que _ensure_overlay()/deiconify() terminam
+                # sem erro. Sem esta trava, uma falha nos dois deixaria
+                # "not self.visible" sempre verdadeiro e o laço retentaria
+                # o fade a cada segundo pra sempre -- uma linha de log por
+                # tick. Escolhi marcar a tentativa (em vez de comparar
+                # com o estado anterior) porque não precisa de mais um
+                # atributo de "estado anterior" pra manter sincronizado; o
+                # reset acima, ligado a "dormindo agora", já garante que
+                # dormir e acordar de novo libera uma tentativa nova.
+                if not self._fade_in_tentado:
+                    self._fade_in_tentado = True
+                    self._fade_in()
 
             if self.visible and self.core.state != "sleep" and self.last_activity:
                 if time.time() - self.last_activity > self.idle_timeout:
                     self.core.state = "sleep"
                     definir_atividade("idle")
                     self._fade_out()
-
-            pulsar()
         except Exception:
             _log(f"Erro no controle de ociosidade:\n{traceback.format_exc()}")
         finally:
+            # Correção 1 da Task 6, achado 2: pulsar() não pode ficar
+            # dentro do try de cima. Antes, uma falha em qualquer fade
+            # pulava pulsar() -- o carimbo do runtime state envelhecia e,
+            # em até 5s, o mini overlay declarava a MILK desligada com ela
+            # viva. Proteção própria: nem uma falha aqui pode derrubar o
+            # after() de baixo.
+            try:
+                pulsar()
+            except Exception:
+                _log(f"Erro ao pulsar o carimbo de atividade:\n{traceback.format_exc()}")
             self.root.after(1000, self._idle_watch)
 
     def run(self):

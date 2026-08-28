@@ -60,6 +60,7 @@ def app():
     a.base_img = None
     a.last_activity = 0
     a.pulse = 0
+    a._fade_in_tentado = False
     return a
 
 
@@ -99,12 +100,53 @@ def test_falha_do_cerebro_nao_mata_a_thread_de_trabalho(app, registros):
 
     app.core = type("CoreFalso", (), {"handle": explode})()
     app.running = True
-    app.events.put("milk")
+    app.events.put("milk que horas sao")
 
     app._trabalho_passo(timeout=0.01)  # não levanta
 
     registro = "\n".join(registros)
+    # Correção 1 da Task 6, achado 5: o teste que saiu (test_a_falha_vai_
+    # para_o_log) também conferia a frase ofensora e a classe da exceção
+    # no log -- não só a mensagem. _trabalho_passo grava as três; nada
+    # protegia isso até esta correção.
+    assert "milk que horas sao" in registro
     assert "provedor de IA fora do ar" in registro
+    assert "RuntimeError" in registro
+
+
+def test_recarimba_last_activity_depois_do_handle_bem_sucedido(app):
+    """
+    Correção 1 da Task 6, achado 3: um handle() longo não pode deixar
+    last_activity parado no instante em que a frase chegou -- senão o
+    _idle_watch, rodando em paralelo, decreta sleep com a MILK ainda
+    trabalhando.
+    """
+    def handle_demorado(self, texto):
+        app.last_activity = 111  # simula o relógio ter avançado durante o handle
+
+    app.core = type("CoreFalso", (), {"handle": handle_demorado})()
+    app.running = True
+    app.events.put("milk")
+
+    antes = app.last_activity
+    app._trabalho_passo(timeout=0.01)
+
+    assert app.last_activity > antes
+    assert app.last_activity != 111  # recarimbado de novo DEPOIS do handle
+
+
+def test_recarimba_last_activity_mesmo_quando_handle_falha(app, registros):
+    def explode(self, texto):
+        raise RuntimeError("provedor de IA fora do ar")
+
+    app.core = type("CoreFalso", (), {"handle": explode})()
+    app.running = True
+    app.events.put("milk")
+
+    app.last_activity = 0
+    app._trabalho_passo(timeout=0.01)
+
+    assert app.last_activity > 0
 
 
 def test_o_fade_segue_o_estado_e_nao_o_comando(app, monkeypatch):
@@ -147,3 +189,73 @@ def test_idle_watch_reagenda_mesmo_falhando(app, registros, monkeypatch):
     app._idle_watch()
 
     assert app.root.agendados == [(1000, app._idle_watch)]
+
+
+def test_idle_watch_pulsa_mesmo_quando_o_fade_falha(app, monkeypatch):
+    """
+    Correção 1 da Task 6, achado 2: pulsar() tinha um try/except só,
+    compartilhado com os fades -- uma falha de fade pulava pulsar() e o
+    carimbo do runtime state envelhecia até o mini overlay declarar a
+    MILK desligada com ela viva. Este é o teste que teria pego isso.
+    """
+    pulsos = []
+    monkeypatch.setattr(app_mod, "pulsar", lambda: pulsos.append(True))
+    monkeypatch.setattr(app, "_fade_out", lambda: 1 / 0)
+    app.visible = True
+    app.core = type("CoreFalso", (), {"state": "sleep"})()
+
+    app._idle_watch()
+
+    assert pulsos == [True]
+
+
+def test_idle_watch_faz_fade_in_quando_acorda(app, monkeypatch):
+    """Cobertura do ramo _fade_in, que não tinha nenhum teste."""
+    apareceu = []
+    monkeypatch.setattr(app, "_fade_in", lambda: apareceu.append(True))
+    app.visible = False
+    app.core = type("CoreFalso", (), {"state": "ready"})()
+
+    app._idle_watch()
+
+    assert apareceu == [True]
+
+
+def test_fade_in_nao_retenta_a_cada_tick_se_falhar(app, monkeypatch):
+    """
+    Correção 1 da Task 6, achado 2: sem a trava de tentativa única, uma
+    falha em _fade_in faria o laço retentar a cada segundo pra sempre
+    (self.visible nunca vira True). Duas voltas do laço com o mesmo
+    estado acordado só podem custar uma tentativa de fade-in.
+    """
+    tentativas = []
+
+    def fade_in_que_falha():
+        tentativas.append(True)
+        raise RuntimeError("overlay não abriu")
+
+    monkeypatch.setattr(app, "_fade_in", fade_in_que_falha)
+    app.visible = False
+    app.core = type("CoreFalso", (), {"state": "ready"})()
+
+    app._idle_watch()
+    app._idle_watch()
+
+    assert len(tentativas) == 1
+
+
+def test_fade_in_tenta_de_novo_apos_dormir_e_acordar(app, monkeypatch):
+    """A trava de tentativa única se solta quando a MILK dorme de novo."""
+    tentativas = []
+    monkeypatch.setattr(app, "_fade_in", lambda: tentativas.append(True))
+    monkeypatch.setattr(app, "_fade_out", lambda: None)
+    app.visible = False
+    app.core = type("CoreFalso", (), {"state": "ready"})()
+
+    app._idle_watch()  # 1a tentativa
+    app.core.state = "sleep"
+    app._idle_watch()  # dormiu: reseta a trava
+    app.core.state = "ready"
+    app._idle_watch()  # acordou nesta chamada: nova tentativa
+
+    assert len(tentativas) == 2
