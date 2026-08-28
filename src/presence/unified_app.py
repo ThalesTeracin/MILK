@@ -42,6 +42,20 @@ SRC = ROOT / "src"
 ASSET = ROOT / "assets" / "milk_presence_source.png"
 LOG = ROOT / "logs" / "presence.log"
 
+# Fase 6, item 4: rótulo/cor do overlay por estado de MilkCore.activity,
+# e velocidade/profundidade do pulso do avatar em _animate(). "idle" cai no
+# valor default de PULSE_BY_ACTIVITY (pulso suave, sem rótulo).
+ACTIVITY_LABEL = {
+    "listening": ("ouvindo…", "#67e8ff"),
+    "thinking": ("pensando…", "#f4c95d"),
+    "speaking": ("falando…", "#7CFC98"),
+}
+PULSE_BY_ACTIVITY = {
+    "speaking": (2, 0.14),
+    "thinking": (1, 0.05),
+}
+PULSE_DEFAULT = (1, 0.08)
+
 
 def _ensure_paths():
     """Garante que src/ (imports internos) e ROOT (MILK_Scheduler.py) estão no sys.path."""
@@ -150,6 +164,14 @@ class UnifiedApp:
                             font=("Segoe UI", 20, "bold"),
                             tags="title")
 
+        # Fase 6, item 4: rótulo de estado (ouvindo/pensando/falando),
+        # atualizado em _animate() a partir de self.core.activity.
+        canvas.create_text(width // 2, 58,
+                            text="",
+                            fill="#67e8ff",
+                            font=("Segoe UI", 11),
+                            tags="status")
+
         self.overlay = win
         self.canvas = canvas
         self._render_avatar(1.0)
@@ -184,10 +206,28 @@ class UnifiedApp:
 
     def _animate(self):
         if self.visible and self.base_img is not None:
-            self.pulse = (self.pulse + 1) % 60
-            b = 0.96 + (0.08 * (1 - abs(30 - self.pulse) / 30))
+            # Fase 6, item 4: velocidade/profundidade do pulso e cor do
+            # rótulo variam com self.core.activity (ouvindo/pensando/
+            # falando), atualizado pelo loop de escuta e por MilkCore.say().
+            # Limitação conhecida: handle() roda de forma síncrona na
+            # mesma thread do Tk, então durante uma chamada de IA longa o
+            # after() deste método fica parado -- a cor/rótulo já mudou
+            # para "pensando" antes do bloqueio, mas o pulso não anima
+            # durante a espera. Ainda assim é uma melhora real sobre o
+            # pulso único e estático que existia antes.
+            activity = getattr(self.core, "activity", "idle")
+            step, depth = PULSE_BY_ACTIVITY.get(activity, PULSE_DEFAULT)
+            self.pulse = (self.pulse + step) % 60
+            b = 0.96 + (depth * (1 - abs(30 - self.pulse) / 30))
             self._render_avatar(b)
+            self._render_status(activity)
         self.root.after(120, self._animate)
+
+    def _render_status(self, activity):
+        if self.canvas is None:
+            return
+        label, color = ACTIVITY_LABEL.get(activity, ("", "#67e8ff"))
+        self.canvas.itemconfigure("status", text=label, fill=color)
 
     # ---------------- escuta + cérebro único (MilkCore) --------------------
 
@@ -199,6 +239,7 @@ class UnifiedApp:
         """
         _log("Loop de escuta unificado iniciado.")
         while self.running:
+            self.core.activity = "listening"
             try:
                 heard = self.core.voice.listen()
             except Exception as e:
@@ -206,6 +247,7 @@ class UnifiedApp:
                 time.sleep(1)
                 continue
             if heard:
+                self.core.activity = "thinking"
                 _log(f"Ouvi: {heard}")
                 self.events.put(heard)
 
@@ -254,6 +296,7 @@ class UnifiedApp:
         if self.visible and self.core.state != "sleep" and self.last_activity:
             if time.time() - self.last_activity > self.idle_timeout:
                 self.core.state = "sleep"
+                self.core.activity = "idle"
                 self._fade_out()
         self.root.after(1000, self._idle_watch)
 

@@ -44,9 +44,18 @@ class MilkCore:
         # Ação adiada aguardando confirmação verbal ("confirmar"). Pode vir
         # do navegador ou de um gate de permissão (open_app, coding_task, etc.).
         self._pending_confirmation=None
+        # Estado fino de atividade (Fase 6, item 4), consumido pelo overlay
+        # em src/presence/unified_app.py para animação reativa
+        # (ouvindo/pensando/falando). "listening"/"thinking" são setados
+        # pelo loop de escuta do UnifiedApp; "speaking"/"idle" aqui em say().
+        self.activity="idle"
 
     def say(self,text):
-        self.speaker.say(text)
+        self.activity="speaking"
+        try:
+            self.speaker.say(text)
+        finally:
+            self.activity="idle" if self.state=="sleep" else "listening"
         try:
             self.memory.assistant_message(text)
         except Exception:
