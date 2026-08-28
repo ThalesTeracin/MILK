@@ -16,7 +16,7 @@ class NaturalVoiceListener:
     def __init__(self):
         if not CONFIG.exists():
             raise RuntimeError(
-                "Whisper não configurado. Arquivo config/whisper_local.json ausente."
+                f"Whisper não configurado. Arquivo {CONFIG} ausente."
             )
 
         cfg = json.loads(CONFIG.read_text(encoding="utf-8-sig"))

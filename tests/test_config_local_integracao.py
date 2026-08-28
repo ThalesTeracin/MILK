@@ -77,3 +77,21 @@ def test_scripts_da_raiz_importam_de_src():
         assert "ModuleNotFoundError" not in resultado.stderr, (
             "%s não é importável da raiz: %s" % (script, resultado.stderr[-300:])
         )
+
+
+def test_erro_de_whisper_ausente_nomeia_o_caminho_resolvido(monkeypatch, tmp_path):
+    """
+    A mensagem de erro precisa nomear o caminho realmente resolvido por
+    config_path() (pode ser config/local/whisper_local.json), não uma
+    string fixa apontando sempre para config/whisper_local.json.
+    """
+    import voice.listener as listener
+
+    caminho_inexistente = tmp_path / "whisper_local.json"
+    monkeypatch.setattr(listener, "CONFIG", caminho_inexistente)
+
+    try:
+        listener.NaturalVoiceListener()
+        assert False, "esperava RuntimeError por CONFIG ausente"
+    except RuntimeError as erro:
+        assert str(caminho_inexistente) in str(erro)
