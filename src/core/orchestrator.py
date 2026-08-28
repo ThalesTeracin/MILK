@@ -13,6 +13,7 @@ from coding.coding_agent_v2 import CodingAgentV2
 from memory.memory_manager import MemoryManager
 from security.permission_manager import PermissionManager
 from knowledge.knowledge_base import KnowledgeBase
+from skills.advanced_router import AdvancedSkillRouter
 
 # Alvos de open_app considerados sensíveis, mapeados para ações do perfil
 # de permissão em config/permission_profiles.json. "prompt de comando" e
@@ -49,6 +50,11 @@ class MilkCore:
         # das ações roda direto), mas passa a negar de verdade arbitrary_shell
         # e a exigir confirmação para ações marcadas em config/permission_profiles.json.
         self.permissions=PermissionManager(profile="balanced")
+        # Roteador de skills por palavra-chave local (fase 33). Antes disso
+        # ele existia e não era importado por ninguém: as skills eram
+        # inalcançáveis por voz. Recebe o mesmo PermissionManager do resto
+        # do MilkCore -- não existe um segundo gate.
+        self.skills=AdvancedSkillRouter(ai=self.ai,permissions=self.permissions)
         # Ação adiada aguardando confirmação verbal ("confirmar"). Pode vir
         # do navegador ou de um gate de permissão (open_app, coding_task, etc.).
         self._pending_confirmation=None
@@ -148,6 +154,21 @@ class MilkCore:
                 except Exception as e:
                     self.say(f"Não consegui concluir a ação confirmada. {e}")
                 return
+
+        # Skills por palavra-chave, antes do NLU: o que casa aqui não gasta
+        # token nem depende do provedor de IA estar no ar.
+        plano=self.skills.route_local(text)
+        if plano:
+            resultado=self.skills.execute(plano)
+            if resultado.get("requires_confirmation"):
+                def _executar_skill(p=plano):
+                    confirmado=self.skills.execute(p,confirmed=True)
+                    self.say(confirmado.get("fala") or "Feito.")
+                self._pending_confirmation={"run":_executar_skill}
+                self.say(resultado.get("fala") or "Isso requer confirmação. Diga confirmar para continuar.")
+                return
+            self.say(resultado.get("fala") or "Não consegui executar isso.")
+            return
 
         result=self.nlu.interpret(text)
         intent=result.get("intent","unknown")
