@@ -1,9 +1,28 @@
 import tkinter as tk
 from pathlib import Path
 from PIL import Image, ImageTk
-from avatar.runtime_state import read_state
+from core.activity_state import ler_do_arquivo
 
 ASSET=Path("assets/milk_avatar.png")
+
+ROTULOS = {
+    "listening": "OUVINDO",
+    "thinking": "PENSANDO",
+    "speaking": "FALANDO",
+    "idle": "PRONTA",
+}
+
+
+def rotulo_de(atividade, fresco):
+    """
+    O texto do mini overlay.
+
+    Estado nao fresco vira DESLIGADA: o arquivo sobrevive ao processo, e
+    sem isso a MILK fechada ficaria "pensando" para sempre na tela.
+    """
+    if not fresco:
+        return "MILK · DESLIGADA"
+    return "MILK · " + ROTULOS.get(atividade, "PRONTA")
 
 class MilkMiniOverlay:
     def __init__(self):
@@ -53,9 +72,8 @@ class MilkMiniOverlay:
         if self.photo:
             self.canvas.create_image(110,135,image=self.photo)
 
-        s=read_state()
-        label="FALANDO" if s.get("speaking") else "OUVINDO" if s.get("listening") else "PENSANDO" if s.get("thinking") else "PRONTA"
-        self.canvas.create_text(110,18,text=f"MILK · {label}",fill="#67e8ff",font=("Segoe UI",10,"bold"))
+        nome, fresco = ler_do_arquivo()
+        self.canvas.create_text(110,18,text=rotulo_de(nome, fresco),fill="#67e8ff",font=("Segoe UI",10,"bold"))
         self.root.after(150,self._tick)
 
     def run(self):
