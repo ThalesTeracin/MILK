@@ -12,7 +12,8 @@
         "deploy",
         "send_email",
         "system_change",
-        "arbitrary_shell"
+        "arbitrary_shell",
+        "scheduled_task"
       ]
     },
     "balanced": {
