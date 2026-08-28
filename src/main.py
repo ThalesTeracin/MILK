@@ -19,6 +19,11 @@ from core.orchestrator import MilkCore
 
 
 def main():
+    if "--version" in sys.argv:
+        from core.version import formatar_versao
+        print(formatar_versao())
+        return
+
     if "--headless" in sys.argv:
         # Modo texto puro, sem overlay/avatar/scheduler -- útil para debug
         # e para ambientes sem Tkinter/display.
