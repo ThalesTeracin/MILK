@@ -33,7 +33,12 @@ PADRAO = "idle"
 # cinco pulsos podem se perder antes de o mini declarar a MILK morta.
 LIMITE_DE_FRESCOR = 5.0
 
-_LOCK = threading.Lock()
+# RLock permite que a mesma thread adquira o lock múltiplas vezes sem deadlock.
+# Isso é crucial porque pulsar() chama atividade() (que entra no lock) e depois
+# _gravar() (que também está sob lock). Com Lock comum seria deadlock. Com RLock,
+# serializa corretamente sem complexidade adicional. A propriedade invariante é:
+# o par (atividade, carimbo) publicado no arquivo nunca diverge da memória.
+_LOCK = threading.RLock()
 _atividade = PADRAO
 
 
@@ -44,7 +49,7 @@ def definir_atividade(nome):
         raise ValueError(f"atividade desconhecida: {nome!r}")
     with _LOCK:
         _atividade = nome
-    _gravar(nome)
+        _gravar(nome)
 
 
 def atividade():
@@ -60,7 +65,8 @@ def pulsar():
     carimbo envelheceria e o mini a declararia desligada enquanto ela esta
     viva.
     """
-    _gravar(atividade())
+    with _LOCK:
+        _gravar(_atividade)
 
 
 def ler_do_arquivo(agora=None):

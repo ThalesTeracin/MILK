@@ -9,6 +9,7 @@ O carimbo de tempo existe porque o arquivo sobrevive ao processo. Sem ele,
 com a MILK fechada o mini mostraria "pensando" para sempre.
 """
 import json
+import threading
 
 import pytest
 
@@ -132,3 +133,52 @@ def test_falha_ao_gravar_nao_derruba_a_voz(monkeypatch, capsys):
 
     assert atividade() == "speaking"
     assert "milk" in capsys.readouterr().out.lower()
+
+
+# -------------------------------------------------------- concorrencia
+
+def test_definir_e_pulsar_intercalados_nao_divergem(monkeypatch):
+    """
+    Prova propriedade invariante: com definir_atividade e pulsar
+    intercaladas, memória e arquivo nunca divergem.
+
+    A corrida: se ambas as funções escrevem em disco fora do lock,
+    uma thread pode ler _atividade antigo, escrever no arquivo, e a
+    outra thread depois escrever um valor mais novo. Se a escrita antiga
+    terminar por último, o arquivo fica com atividade errada marcada
+    como fresca — pior que estado velho.
+
+    Com RLock e escrita serializada dentro do lock, o par
+    (atividade, carimbo) é atômico: arquivo sempre tem exatamente
+    o que a memória tem.
+    """
+    # Instrumenta _gravar para disparar pulsar durante a primeira gravação
+    disparou = [False]
+    thread_pulsar = [None]
+    original_gravar = estado_mod._gravar
+
+    def _gravar_com_disparo(nome):
+        if not disparou[0]:
+            disparou[0] = True
+            # Dispara pulsar em paralelo sem aguardar
+            thread_pulsar[0] = threading.Thread(target=pulsar)
+            thread_pulsar[0].start()
+
+        original_gravar(nome)
+
+    monkeypatch.setattr(estado_mod, "_gravar", _gravar_com_disparo)
+
+    # Define "thinking", que dispara pulsar em paralelo
+    definir_atividade("thinking")
+
+    # Define "speaking" (acontece depois que pulsar retorna)
+    definir_atividade("speaking")
+
+    # Aguarda thread disparada
+    if thread_pulsar[0]:
+        thread_pulsar[0].join()
+
+    # Verifica que memória e arquivo estão sincronizados
+    mem = atividade()
+    arq, _ = ler_do_arquivo()
+    assert mem == arq, f"Divergência: mem={mem!r}, arq={arq!r}"
