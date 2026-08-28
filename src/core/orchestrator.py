@@ -155,6 +155,13 @@ class MilkCore:
                     self.say(f"Não consegui concluir a ação confirmada. {e}")
                 return
 
+        # Se chegamos até aqui, o texto não era uma confirmação -- o usuário
+        # seguiu para outra coisa. Descarta qualquer pendência antiga: do
+        # contrário, um "confirmar" mais tarde (inclusive um alucinado pelo
+        # reconhecimento de voz a partir de ruído de fundo) dispararia uma
+        # ação que o usuário já abandonou.
+        self._pending_confirmation=None
+
         # Skills por palavra-chave, antes do NLU: o que casa aqui não gasta
         # token nem depende do provedor de IA estar no ar.
         plano=self.skills.route_local(text)

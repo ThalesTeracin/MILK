@@ -139,3 +139,40 @@ def test_dormindo_a_skill_nao_dispara_sem_a_wake_word(core):
     core.handle("qual o status do git")
 
     assert core.ditos == []
+
+
+def test_pendencia_e_descartada_por_comando_nao_relacionado(core):
+    """Uma pendência abandonada não pode ser disparada por um "confirmar"
+    posterior -- inclusive um alucinado pelo reconhecimento de voz a partir
+    de ruído de fundo, depois que o usuário já seguiu para outro assunto."""
+    acao_antiga = {"chamada": False}
+
+    def _run_antiga():
+        acao_antiga["chamada"] = True
+
+    core._pending_confirmation = {"run": _run_antiga}
+    core.skills = RouterFalso(
+        plano={"type": "builtin", "skill": "git_status", "args": {}},
+        saida={"ok": True, "fala": "Estou na branch master.", "dados": {}},
+    )
+
+    core.handle("qual o status do git")
+    core.handle("confirmar")
+
+    assert acao_antiga["chamada"] is False
+
+
+def test_confirmar_imediato_ainda_executa_a_acao(core):
+    """Guarda contra limpar a pendência cedo demais: confirmar logo em
+    seguida ao pedido que a criou continua disparando a ação."""
+    acao = {"chamada": False}
+
+    def _run():
+        acao["chamada"] = True
+
+    core._pending_confirmation = {"run": _run}
+    core.skills = RouterFalso(plano=None)
+
+    core.handle("confirmar")
+
+    assert acao["chamada"] is True
