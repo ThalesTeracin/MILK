@@ -56,3 +56,9 @@ config/whisper_local.json
 
 # Documentos gerados pelo DocumentManager
 output/
+
+# Estado de atividade da MILK (fase 33): reescrito a cada mudança de
+# atividade em tempo de execução. Versionado, sujava a árvore de trabalho
+# toda vez que a MILK rodava e travava o Atualizar_MILK.ps1, que exige
+# árvore limpa antes de atualizar.
+data/milk_runtime_state.json
