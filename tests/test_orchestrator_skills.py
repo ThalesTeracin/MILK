@@ -36,7 +36,22 @@ class NluFalso:
         return {"intent": "chat", "reply": "oi"}
 
 
+class MemoriaLongaFalsa:
+    """Dublê mínimo de MemoryManager.long, só o necessário para os blocos
+    locais de memória do handle (quais projetos / status da memória) não
+    quebrarem -- nada toca banco de verdade."""
+
+    def list_projects(self, limit=8):
+        return []
+
+    def stats(self):
+        return {"conversations": 0, "projects": 0, "decisions": 0, "errors": 0}
+
+
 class MemoriaFalsa:
+    def __init__(self):
+        self.long = MemoriaLongaFalsa()
+
     def user_message(self, texto):
         pass
 
@@ -176,3 +191,39 @@ def test_confirmar_imediato_ainda_executa_a_acao(core):
     core.handle("confirmar")
 
     assert acao["chamada"] is True
+
+
+def test_pendencia_e_descartada_por_quais_projetos(core):
+    """Rodada 2: "quais projetos" tem return próprio, antes do bloco de
+    skills. Se o descarte ficasse depois desse return (como estava antes
+    da correção), essa pendência sobreviveria intacta até o "confirmar"
+    seguinte."""
+    acao_antiga = {"chamada": False}
+
+    def _run_antiga():
+        acao_antiga["chamada"] = True
+
+    core._pending_confirmation = {"run": _run_antiga}
+    core.skills = RouterFalso(plano=None)
+
+    core.handle("quais projetos")
+    core.handle("confirmar")
+
+    assert acao_antiga["chamada"] is False
+
+
+def test_pendencia_e_descartada_por_status_da_memoria(core):
+    """Mesma lacuna do teste acima, para o outro bloco de memória com
+    return próprio ("status da memória")."""
+    acao_antiga = {"chamada": False}
+
+    def _run_antiga():
+        acao_antiga["chamada"] = True
+
+    core._pending_confirmation = {"run": _run_antiga}
+    core.skills = RouterFalso(plano=None)
+
+    core.handle("status da memória")
+    core.handle("confirmar")
+
+    assert acao_antiga["chamada"] is False

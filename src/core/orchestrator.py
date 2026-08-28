@@ -124,6 +124,29 @@ class MilkCore:
             else:
                 return
 
+        # confirmação de ação adiada (navegador ou gate de permissão). Fica
+        # logo após o portão de sono e ANTES de qualquer bloco com "return"
+        # próprio (memória local, skills) -- rodada 2 da correção: um return
+        # antecipado antes do descarte deixava pendências abandonadas vivas
+        # para um "confirmar" posterior, inclusive alucinado pelo
+        # reconhecimento de voz a partir de ruído de fundo.
+        if low in ["confirmar","confirmo","pode enviar","confirmar envio"]:
+            pending=self._pending_confirmation
+            if pending:
+                self._pending_confirmation=None
+                try:
+                    pending["run"]()
+                except Exception as e:
+                    self.say(f"Não consegui concluir a ação confirmada. {e}")
+                return
+
+        # Se chegamos até aqui, o texto não era uma confirmação -- o usuário
+        # seguiu para outra coisa. Descarta qualquer pendência antiga antes
+        # de qualquer bloco abaixo (memória local, skills, NLU) que possa
+        # retornar cedo: do contrário, um "confirmar" mais tarde dispararia
+        # uma ação que o usuário já abandonou.
+        self._pending_confirmation=None
+
         # comandos locais de memória
         if "quais projetos" in low or "meus projetos" in low:
             projects=self.memory.long.list_projects(limit=8)
@@ -143,24 +166,6 @@ class MilkCore:
                 f"{st['errors']} erros registrados."
             )
             return
-
-        # confirmação de ação adiada (navegador ou gate de permissão)
-        if low in ["confirmar","confirmo","pode enviar","confirmar envio"]:
-            pending=self._pending_confirmation
-            if pending:
-                self._pending_confirmation=None
-                try:
-                    pending["run"]()
-                except Exception as e:
-                    self.say(f"Não consegui concluir a ação confirmada. {e}")
-                return
-
-        # Se chegamos até aqui, o texto não era uma confirmação -- o usuário
-        # seguiu para outra coisa. Descarta qualquer pendência antiga: do
-        # contrário, um "confirmar" mais tarde (inclusive um alucinado pelo
-        # reconhecimento de voz a partir de ruído de fundo) dispararia uma
-        # ação que o usuário já abandonou.
-        self._pending_confirmation=None
 
         # Skills por palavra-chave, antes do NLU: o que casa aqui não gasta
         # token nem depende do provedor de IA estar no ar.
