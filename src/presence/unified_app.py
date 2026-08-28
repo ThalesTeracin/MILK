@@ -32,6 +32,7 @@ import queue
 import sys
 import threading
 import time
+import traceback
 from pathlib import Path
 
 import tkinter as tk
@@ -215,12 +216,17 @@ class UnifiedApp:
             # para "pensando" antes do bloqueio, mas o pulso não anima
             # durante a espera. Ainda assim é uma melhora real sobre o
             # pulso único e estático que existia antes.
-            activity = getattr(self.core, "activity", "idle")
-            step, depth = PULSE_BY_ACTIVITY.get(activity, PULSE_DEFAULT)
-            self.pulse = (self.pulse + step) % 60
-            b = 0.96 + (depth * (1 - abs(30 - self.pulse) / 30))
-            self._render_avatar(b)
-            self._render_status(activity)
+            # Mesmo motivo de _poll_events: sem esta proteção, um erro aqui
+            # congelaria o avatar de vez, em vez de custar um quadro.
+            try:
+                activity = getattr(self.core, "activity", "idle")
+                step, depth = PULSE_BY_ACTIVITY.get(activity, PULSE_DEFAULT)
+                self.pulse = (self.pulse + step) % 60
+                b = 0.96 + (depth * (1 - abs(30 - self.pulse) / 30))
+                self._render_avatar(b)
+                self._render_status(activity)
+            except Exception:
+                _log(f"Erro ao desenhar o avatar:\n{traceback.format_exc()}")
         self.root.after(120, self._animate)
 
     def _render_status(self, activity):
@@ -268,13 +274,30 @@ class UnifiedApp:
             _log(f"Scheduler encerrou com erro: {e}")
 
     def _poll_events(self):
+        """
+        Consome a fila de frases ouvidas, sem deixar uma falha matar o laço.
+
+        Antes, _on_heard rodava sem proteção: qualquer exceção saía deste
+        método, o after() final nunca era agendado e a fila deixava de ser
+        consumida PARA SEMPRE -- enquanto a thread de escuta seguia
+        gravando "Ouvi:" em logs/presence.log. Sob pythonw o traceback ia
+        para um stderr que não existe, então a MILK parecia viva, ouvia
+        tudo e não respondia mais nada.
+
+        Duas garantias agora: a falha de uma frase não impede a próxima, e
+        o reagendamento acontece no finally, aconteça o que acontecer.
+        """
         try:
             while True:
                 text = self.events.get_nowait()
-                self._on_heard(text)
+                try:
+                    self._on_heard(text)
+                except Exception:
+                    _log(f"Erro ao tratar {text!r}:\n{traceback.format_exc()}")
         except queue.Empty:
             pass
-        self.root.after(100, self._poll_events)
+        finally:
+            self.root.after(100, self._poll_events)
 
     def _on_heard(self, text):
         self.last_activity = time.time()
@@ -293,12 +316,18 @@ class UnifiedApp:
             self._fade_out()
 
     def _idle_watch(self):
-        if self.visible and self.core.state != "sleep" and self.last_activity:
-            if time.time() - self.last_activity > self.idle_timeout:
-                self.core.state = "sleep"
-                self.core.activity = "idle"
-                self._fade_out()
-        self.root.after(1000, self._idle_watch)
+        # Mesmo motivo de _poll_events: sem o finally, uma falha ao esconder
+        # o overlay deixaria a MILK acordada para sempre.
+        try:
+            if self.visible and self.core.state != "sleep" and self.last_activity:
+                if time.time() - self.last_activity > self.idle_timeout:
+                    self.core.state = "sleep"
+                    self.core.activity = "idle"
+                    self._fade_out()
+        except Exception:
+            _log(f"Erro no controle de ociosidade:\n{traceback.format_exc()}")
+        finally:
+            self.root.after(1000, self._idle_watch)
 
     def run(self):
         self.root.mainloop()
