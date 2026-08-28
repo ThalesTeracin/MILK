@@ -19,7 +19,12 @@ def version_info():
     """Devolve (versao, commit). O commit é None fora de um repositório."""
     try:
         versao = VERSION_FILE.read_text(encoding="utf-8").strip() or VERSAO_DESCONHECIDA
-    except Exception:
+    except FileNotFoundError:
+        # Esperado: instalação sem o arquivo VERSION (ex.: fora de uma cópia
+        # completa do repositório). Cai no valor padrão em silêncio.
+        versao = VERSAO_DESCONHECIDA
+    except Exception as e:
+        print(f"⚠️ erro ao ler {VERSION_FILE} ({type(e).__name__}: {e}); usando versão desconhecida.")
         versao = VERSAO_DESCONHECIDA
 
     commit = None
@@ -29,8 +34,12 @@ def version_info():
         )
         if resultado.returncode == 0:
             commit = resultado.stdout.strip() or None
-    except Exception:
-        commit = None
+        # returncode != 0 é o caso esperado de "fora de um repositório
+        # git" (ex.: instalação sem .git) -- fica em silêncio, commit=None.
+    except Exception as e:
+        # Inesperado: git ausente do PATH, travou até o timeout, ou outra
+        # falha do run_hidden. Diferente de "não é um repositório".
+        print(f"⚠️ git indisponível ao obter o commit ({type(e).__name__}: {e}); versão sem hash.")
 
     return versao, commit
 
