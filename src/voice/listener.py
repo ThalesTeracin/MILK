@@ -9,6 +9,7 @@ import sounddevice as sd
 
 from core.config import config_path
 from core.proc import popen_hidden
+from voice.audio_device import indice_de_entrada
 
 CONFIG = config_path("whisper_local.json")
 
@@ -30,7 +31,18 @@ class NaturalVoiceListener:
         if not self.model.exists():
             raise RuntimeError(f"modelo não encontrado: {self.model}")
 
-        info = sd.query_devices(None, "input")
+        # None abre o dispositivo padrao do Windows; um indice abre o
+        # microfone que o usuario escolheu em Selecionar_Microfone.py.
+        self.device = indice_de_entrada()
+        try:
+            info = sd.query_devices(self.device, "input")
+        except Exception as e:
+            # Indice invalido (microfone desconectado desde a escolha).
+            # Cair no padrao e melhor do que o MILK ficar surdo.
+            print(f"⚠️ microfone {self.device} indisponível ({type(e).__name__}: {e}); usando o padrão.")
+            self.device = None
+            info = sd.query_devices(None, "input")
+
         self.native_rate = int(float(info.get("default_samplerate", 44100)))
         self.device_name = info.get("name", "Microfone padrão")
 
@@ -80,7 +92,7 @@ class NaturalVoiceListener:
             samplerate=self.native_rate,
             channels=1,
             dtype="int16",
-            device=None,
+            device=self.device,
         ) as stream:
             for _ in range(blocos_maximos):
                 dados, estourou = stream.read(frames_por_bloco)
