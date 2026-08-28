@@ -334,7 +334,7 @@ def _gravar(nome):
 - [ ] **Passo 4: Rodar os testes e confirmar que passam**
 
 Rodar: `python -m pytest tests/test_activity_state.py -v`
-Esperado: PASS nos 13 testes.
+Esperado: PASS nos 12 testes.
 
 - [ ] **Passo 5: Commitar**
 
