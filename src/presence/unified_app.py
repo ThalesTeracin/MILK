@@ -105,8 +105,8 @@ class UnifiedApp:
 
         threading.Thread(target=self._listen_loop, daemon=True).start()
         threading.Thread(target=self._scheduler_loop, daemon=True).start()
+        threading.Thread(target=self._trabalho_loop, daemon=True).start()
 
-        self.root.after(100, self._poll_events)
         self.root.after(120, self._animate)
         self.root.after(1000, self._idle_watch)
 
@@ -275,60 +275,51 @@ class UnifiedApp:
         except Exception as e:
             _log(f"Scheduler encerrou com erro: {e}")
 
-    def _poll_events(self):
+    def _trabalho_loop(self):
         """
-        Consome a fila de frases ouvidas, sem deixar uma falha matar o laço.
+        Consome a fila e chama o cérebro, FORA da thread do Tk.
 
-        Antes, _on_heard rodava sem proteção: qualquer exceção saía deste
-        método, o after() final nunca era agendado e a fila deixava de ser
-        consumida PARA SEMPRE -- enquanto a thread de escuta seguia
-        gravando "Ouvi:" em logs/presence.log. Sob pythonw o traceback ia
-        para um stderr que não existe, então a MILK parecia viva, ouvia
-        tudo e não respondia mais nada.
+        Antes, handle() rodava na thread do Tk: a chamada de IA inteira, a
+        memória e o TTS aconteciam dentro da thread que deveria estar
+        animando. O after() ficava parado e o avatar congelava em
+        "pensando" -- exatamente quando devia se mexer.
 
-        Duas garantias agora: a falha de uma frase não impede a próxima, e
-        o reagendamento acontece no finally, aconteça o que acontecer.
+        Esta thread nunca toca em Tkinter, que não aceita chamada de outra
+        thread. Ela só muda estado; quem aparece e some é o _idle_watch, na
+        thread do Tk, olhando core.state.
         """
+        while self.running:
+            self._trabalho_passo()
+
+    def _trabalho_passo(self, timeout=0.2):
+        """Um giro do laço. Separado para poder ser testado sem thread."""
         try:
-            while True:
-                text = self.events.get_nowait()
-                try:
-                    self._on_heard(text)
-                except Exception:
-                    _log(f"Erro ao tratar {text!r}:\n{traceback.format_exc()}")
+            text = self.events.get(timeout=timeout)
         except queue.Empty:
-            pass
-        finally:
-            self.root.after(100, self._poll_events)
+            return
 
-    def _on_heard(self, text):
         self.last_activity = time.time()
-        was_sleep = (self.core.state == "sleep")
-        low = text.lower().strip()
-
-        # Aparição instantânea do avatar ao detectar a wake word, antes de
-        # processar o comando (MilkCore.handle já trata a lógica de
-        # sleep/ready e a própria wake word "milk").
-        if was_sleep and "milk" in low:
-            self._fade_in()
-
-        self.core.handle(text)
-
-        if self.core.state == "sleep" and self.visible:
-            self._fade_out()
+        try:
+            self.core.handle(text)
+        except Exception:
+            _log(f"Erro ao tratar {text!r}:\n{traceback.format_exc()}")
 
     def _idle_watch(self):
-        # Mesmo motivo de _poll_events: sem o finally, uma falha ao esconder
-        # o overlay deixaria a MILK acordada para sempre.
+        # Aparecer e sumir virou consequência do estado, não do comando: a
+        # thread de trabalho não pode tocar em Tkinter, então quem decide
+        # é este laço, que já roda na thread do Tk de segundo em segundo.
         try:
+            if self.core.state == "sleep" and self.visible:
+                self._fade_out()
+            elif self.core.state != "sleep" and not self.visible:
+                self._fade_in()
+
             if self.visible and self.core.state != "sleep" and self.last_activity:
                 if time.time() - self.last_activity > self.idle_timeout:
                     self.core.state = "sleep"
                     definir_atividade("idle")
                     self._fade_out()
-            # O estado só é escrito quando muda. Sem este pulso, a MILK
-            # parada ouvindo teria o carimbo envelhecendo e o mini overlay
-            # a declararia desligada enquanto ela está viva.
+
             pulsar()
         except Exception:
             _log(f"Erro no controle de ociosidade:\n{traceback.format_exc()}")

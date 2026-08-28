@@ -63,69 +63,63 @@ def app():
     return a
 
 
-# ------------------------------------------------------- _poll_events
+# ------------------------------------------------- fila fora do Tk
 
-def test_fila_vazia_reagenda(app):
-    app._poll_events()
+def test_nao_existe_mais_poll_events(app):
+    """
+    A fila passou a ser consumida pela thread de trabalho. Um _poll_events
+    sobrevivente voltaria a chamar handle() na thread do Tk, e o avatar
+    voltaria a congelar -- o defeito que esta fase existe para tirar.
+    """
+    assert not hasattr(app, "_poll_events")
+    assert not hasattr(app, "_on_heard")
 
-    assert app.root.agendados == [(100, app._poll_events)]
 
-
-def test_consome_tudo_que_esta_na_fila(app, monkeypatch):
+def test_trabalho_loop_entrega_a_fala_ao_cerebro(app):
     tratados = []
-    monkeypatch.setattr(app, "_on_heard", tratados.append)
+    app.core = type("CoreFalso", (), {"handle": lambda self, t: tratados.append(t)})()
+    app.running = True
 
-    app.events.put("um")
-    app.events.put("dois")
-    app._poll_events()
+    app.events.put("milk que horas são")
+    app._trabalho_passo(timeout=0.01)
 
-    assert tratados == ["um", "dois"]
+    assert tratados == ["milk que horas são"]
 
 
-def test_excecao_ao_tratar_nao_mata_o_laco(app, registros, monkeypatch):
-    """O defeito original: uma excecao aqui parava o after() para sempre."""
-    def explode(texto):
+def test_fila_vazia_no_trabalho_loop_nao_e_erro(app):
+    app.core = type("CoreFalso", (), {"handle": lambda self, t: None})()
+    app.running = True
+
+    app._trabalho_passo(timeout=0.01)  # não levanta
+
+
+def test_falha_do_cerebro_nao_mata_a_thread_de_trabalho(app, registros):
+    def explode(self, texto):
         raise RuntimeError("provedor de IA fora do ar")
 
-    monkeypatch.setattr(app, "_on_heard", explode)
-    app.events.put("milk que horas sao")
+    app.core = type("CoreFalso", (), {"handle": explode})()
+    app.running = True
+    app.events.put("milk")
 
-    app._poll_events()
-
-    assert app.root.agendados == [(100, app._poll_events)]
-
-
-def test_a_falha_vai_para_o_log(app, registros, monkeypatch):
-    def explode(texto):
-        raise RuntimeError("provedor de IA fora do ar")
-
-    monkeypatch.setattr(app, "_on_heard", explode)
-    app.events.put("milk que horas sao")
-
-    app._poll_events()
+    app._trabalho_passo(timeout=0.01)  # não levanta
 
     registro = "\n".join(registros)
-    assert "milk que horas sao" in registro
     assert "provedor de IA fora do ar" in registro
-    # Sem o traceback nao da para saber onde quebrou: era o que faltava.
-    assert "RuntimeError" in registro
 
 
-def test_uma_frase_ruim_nao_impede_a_proxima(app, registros, monkeypatch):
-    tratados = []
+def test_o_fade_segue_o_estado_e_nao_o_comando(app, monkeypatch):
+    """
+    A thread de trabalho não pode tocar em Tk. Quem faz o fade é o
+    _idle_watch, olhando core.state.
+    """
+    escondeu = []
+    monkeypatch.setattr(app, "_fade_out", lambda: escondeu.append(True))
+    app.visible = True
+    app.core = type("CoreFalso", (), {"state": "sleep"})()
 
-    def as_vezes_explode(texto):
-        if texto == "ruim":
-            raise RuntimeError("falhou")
-        tratados.append(texto)
+    app._idle_watch()
 
-    monkeypatch.setattr(app, "_on_heard", as_vezes_explode)
-    app.events.put("ruim")
-    app.events.put("boa")
-
-    app._poll_events()
-
-    assert tratados == ["boa"]
+    assert escondeu == [True]
 
 
 # ------------------------------------------------------------ _animate
