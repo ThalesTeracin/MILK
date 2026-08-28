@@ -93,9 +93,13 @@ def test_executa_e_devolve_frase(router, monkeypatch):
     assert saida["dados"] == {"branch": "master"}
 
 
-def test_o_gate_e_consultado_com_o_nome_da_skill():
+def test_o_gate_e_consultado_com_o_nome_da_skill(monkeypatch):
     permissoes = PermissoesFalsas()
     router = AdvancedSkillRouter(permissions=permissoes)
+    monkeypatch.setattr(
+        "skills.advanced_router.BuiltinSkills.open_projects",
+        staticmethod(lambda args=None: {"ok": True, "fala": "Abri a pasta.", "dados": {}}),
+    )
 
     router.execute({"type": "builtin", "skill": "open_projects", "args": {}}, confirmed=True)
 
@@ -189,3 +193,75 @@ def test_o_registro_so_lista_o_que_existe():
 
     for skill in SkillRegistry().list_skills():
         assert hasattr(BuiltinSkills, skill["name"]), skill["name"]
+
+
+# ----------------------------------------- parsing de git_status (achado 2)
+
+class ProcessoFalso:
+    """Dublê do CompletedProcess devolvido por core.proc.run_hidden."""
+
+    def __init__(self, stdout="", stderr="", returncode=0):
+        self.stdout = stdout
+        self.stderr = stderr
+        self.returncode = returncode
+
+
+def _rodar_git_status_com_saida(monkeypatch, stdout):
+    """Substitui run_hidden por um dublê e chama a skill de verdade."""
+    from skills.skill_registry import BuiltinSkills
+
+    monkeypatch.setattr(
+        "skills.skill_registry.run_hidden",
+        lambda *a, **k: ProcessoFalso(stdout=stdout),
+    )
+    return BuiltinSkills.git_status()
+
+
+def test_parsing_branch_com_upstream(monkeypatch):
+    saida = _rodar_git_status_com_saida(
+        monkeypatch, "## fase-33...origem/fase-33"
+    )
+
+    assert saida["dados"]["branch"] == "fase-33"
+    assert saida["dados"]["pendentes"] == 0
+    assert "fase-33" in saida["fala"]
+    assert "sem alterações pendentes" in saida["fala"]
+
+
+def test_parsing_branch_sem_upstream(monkeypatch):
+    saida = _rodar_git_status_com_saida(monkeypatch, "## fase-33")
+
+    assert saida["dados"]["branch"] == "fase-33"
+    assert saida["dados"]["pendentes"] == 0
+
+
+def test_parsing_repositorio_sem_commits(monkeypatch):
+    """
+    'git status --branch' num repo recém-criado, sem nenhum commit, usa
+    "No commits yet on <branch>" no lugar do cabeçalho normal. Sem tratar
+    esse prefixo, a MILK falaria a frase inteira como se fosse o nome da
+    branch.
+    """
+    saida = _rodar_git_status_com_saida(monkeypatch, "## No commits yet on master")
+
+    assert saida["dados"]["branch"] == "master"
+    assert saida["dados"]["pendentes"] == 0
+    assert "Estou na branch master" in saida["fala"]
+
+
+def test_parsing_saida_vazia(monkeypatch):
+    saida = _rodar_git_status_com_saida(monkeypatch, "")
+
+    assert saida["dados"]["branch"] == "desconhecida"
+    assert saida["dados"]["pendentes"] == 0
+
+
+def test_parsing_conta_arquivos_pendentes(monkeypatch):
+    saida = _rodar_git_status_com_saida(
+        monkeypatch,
+        "## fase-33...origem/fase-33\n M arquivo_a.py\n M arquivo_b.py\n?? arquivo_c.py",
+    )
+
+    assert saida["dados"]["branch"] == "fase-33"
+    assert saida["dados"]["pendentes"] == 3
+    assert "3 arquivos pendentes" in saida["fala"]

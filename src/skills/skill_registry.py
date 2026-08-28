@@ -19,6 +19,29 @@ from core.proc import run_hidden
 RAIZ = Path(__file__).resolve().parents[2]
 REGISTRY = RAIZ / "config" / "skills.json"
 
+# "## No commits yet on master" -> repositório sem nenhum commit ainda; o
+# git usa esse texto no lugar do nome de branch normal no cabeçalho de
+# `git status --branch`.
+PREFIXO_SEM_COMMITS = "No commits yet on "
+
+
+def _nome_da_branch(cabecalho):
+    """
+    Extrai o nome da branch do cabeçalho de `git status --short --branch`.
+
+    Formatos tratados:
+    - "## fase-33...origem/fase-33" (branch com upstream) -> "fase-33"
+    - "## fase-33" (branch sem upstream) -> "fase-33"
+    - "## No commits yet on master" (repo sem commits) -> "master"
+    - "" (sem cabeçalho) -> "desconhecida"
+    """
+    sem_prefixo = cabecalho.lstrip("#").strip()
+    if sem_prefixo.startswith(PREFIXO_SEM_COMMITS):
+        sem_prefixo = sem_prefixo[len(PREFIXO_SEM_COMMITS):].strip()
+    else:
+        sem_prefixo = sem_prefixo.split("...")[0].strip()
+    return sem_prefixo or "desconhecida"
+
 
 class SkillRegistry:
     def __init__(self):
@@ -44,8 +67,7 @@ class BuiltinSkills:
 
         linhas = [l for l in (p.stdout or "").splitlines() if l.strip()]
         cabecalho = linhas[0] if linhas else ""
-        # "## fase-33...origem/fase-33" -> "fase-33"
-        branch = cabecalho.lstrip("#").strip().split("...")[0].strip() or "desconhecida"
+        branch = _nome_da_branch(cabecalho)
         pendentes = max(0, len(linhas) - 1)
 
         if pendentes == 0:
