@@ -1,49 +1,69 @@
+"""
+As skills embutidas da MILK.
+
+Cada skill devolve {"ok", "fala", "dados"}: a MILK fala o campo "fala", e
+"dados" fica para log, teste e para o Command Center mostrar o número
+exato sem re-executar a skill.
+
+Duas skills sairam na fase 33 por duplicarem, pior, o que ja existia:
+system_status (WindowsAgent.system_status ja devolve frase falavel e esta
+ligado ao intent) e web_search (BrowserAgent.search dirige a pagina e
+sustenta os browser_click_text e browser_fill que vem depois).
+"""
 import json
 import os
-import webbrowser
 from pathlib import Path
-import psutil
 
 from core.proc import run_hidden
 
-REGISTRY=Path("config/skills.json")
+RAIZ = Path(__file__).resolve().parents[2]
+REGISTRY = RAIZ / "config" / "skills.json"
+
 
 class SkillRegistry:
     def __init__(self):
-        self.data=json.loads(REGISTRY.read_text(encoding="utf-8"))
+        self.data = json.loads(REGISTRY.read_text(encoding="utf-8-sig"))
 
     def list_skills(self):
-        return self.data.get("skills",[])
+        return self.data.get("skills", [])
 
     def get(self, name):
-        return next((s for s in self.list_skills() if s.get("name")==name),None)
+        return next((s for s in self.list_skills() if s.get("name") == name), None)
+
 
 class BuiltinSkills:
     @staticmethod
-    def system_status(args=None):
-        return {
-            "cpu":psutil.cpu_percent(interval=.2),
-            "memory":psutil.virtual_memory().percent,
-            "disk":psutil.disk_usage("C:\\").percent
-        }
-
-    @staticmethod
     def git_status(args=None):
-        p=run_hidden(["git","status","--short","--branch"],cwd=r"C:\JARVIS")
-        return {"ok":p.returncode==0,"stdout":p.stdout.strip(),"stderr":p.stderr.strip()}
+        p = run_hidden(["git", "status", "--short", "--branch"], cwd=str(RAIZ))
+        if p.returncode != 0:
+            return {
+                "ok": False,
+                "fala": "Não consegui ler o status do git.",
+                "dados": {"stderr": (p.stderr or "").strip()},
+            }
+
+        linhas = [l for l in (p.stdout or "").splitlines() if l.strip()]
+        cabecalho = linhas[0] if linhas else ""
+        # "## fase-33...origem/fase-33" -> "fase-33"
+        branch = cabecalho.lstrip("#").strip().split("...")[0].strip() or "desconhecida"
+        pendentes = max(0, len(linhas) - 1)
+
+        if pendentes == 0:
+            fala = f"Estou na branch {branch}, sem alterações pendentes."
+        elif pendentes == 1:
+            fala = f"Estou na branch {branch}, com um arquivo pendente."
+        else:
+            fala = f"Estou na branch {branch}, com {pendentes} arquivos pendentes."
+
+        return {"ok": True, "fala": fala, "dados": {"branch": branch, "pendentes": pendentes}}
 
     @staticmethod
     def open_projects(args=None):
-        path=Path(r"C:\JARVIS\projects")
-        path.mkdir(parents=True,exist_ok=True)
-        os.startfile(path)
-        return {"ok":True,"path":str(path)}
-
-    @staticmethod
-    def web_search(args=None):
-        q=(args or {}).get("query","")
-        if not q:
-            return {"ok":False,"error":"query ausente"}
-        import urllib.parse
-        webbrowser.open("https://www.google.com/search?q="+urllib.parse.quote_plus(q))
-        return {"ok":True}
+        caminho = RAIZ / "projects"
+        caminho.mkdir(parents=True, exist_ok=True)
+        os.startfile(caminho)
+        return {
+            "ok": True,
+            "fala": "Abri a pasta de projetos.",
+            "dados": {"path": str(caminho)},
+        }

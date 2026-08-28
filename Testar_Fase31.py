@@ -1,3 +1,15 @@
+# =============================================================================
+# SUBSTITUÍDO (Fase 33 - integração Presence + Avatar + Skills, 2026-08-28).
+# O formato de retorno das skills mudou: cada skill agora devolve
+# {"ok", "fala", "dados"} e passa pelo PermissionManager do perfil
+# (config/permission_profiles.json), não mais pelo conjunto RISKY próprio
+# do router. Este script ainda monta o AdvancedSkillRouter sem
+# `permissions` e espera os dicionários no formato antigo ({"result": ...}),
+# então toda chamada a execute() aqui volta com "ok": False (gate ausente).
+# Mantido apenas como referência histórica. Não editar/usar.
+# A cobertura real está em tests/test_skill_router.py.
+# =============================================================================
+
 import sys
 from pathlib import Path
 
