@@ -29,6 +29,13 @@
       máquina casaria com esse nome de processo e faria o script esperar
       à toa, ou pior, cancelar por engano.
 
+    - Instalar as dependências vem antes de migrar e de testar porque
+      uma versão nova pode trazer dependência nova. Sem esse passo ela
+      faltaria, os testes falhariam e a atualização boa seria revertida:
+      nenhuma versão que acrescentasse dependência poderia ser aceita.
+      O pip NÃO é desfeito na reversão -- pacote instalado a mais é
+      inofensivo, pelo mesmo motivo que a migração aditiva é.
+
     - A reversão só é segura porque as migrações são somente aditivas
       (ADD COLUMN). Se a migração rodou e os testes falharam, o código
       volta e o banco fica adiante sem quebrar.
@@ -115,6 +122,14 @@ try {
     Write-Host "Atualizando..."
     & git pull
     if ($LASTEXITCODE -ne 0) { throw "git pull falhou" }
+
+    # Antes de migrar: uma versao nova pode trazer dependencia nova, e
+    # sem este passo ela faltaria, os testes falhariam e a atualizacao
+    # boa seria revertida -- ou seja, nenhuma versao que acrescente
+    # dependencia poderia ser aceita.
+    Write-Host "Instalando dependências..."
+    & python -m pip install -r requirements.txt
+    if ($LASTEXITCODE -ne 0) { throw "pip install falhou" }
 
     Write-Host "Migrando o banco..."
     & python -c "import sys; sys.path.insert(0,'src'); from memory.long_memory import LongMemory; LongMemory().close()"
