@@ -55,22 +55,58 @@ class NaturalVoiceListener:
         y = np.interp(new_idx, old_idx, x)
         return np.clip(y, -32768, 32767).astype(np.int16)
 
+    # Detecção de fim de fala. Antes a captura gravava um bloco fixo de
+    # self.seconds e descartava tudo se o RMS médio ficasse abaixo do
+    # limiar: frases mais longas que a janela eram cortadas no meio, e
+    # frases curtas gastavam o resto do tempo gravando silêncio.
+    LIMIAR_RMS = 15          # mesmo limiar usado antes, agora por bloco
+    BLOCO_SEGUNDOS = 0.1     # granularidade da decisão
+    SILENCIO_PARA_PARAR = 0.8
+    DURACAO_MAXIMA = 15.0    # teto absoluto, evita gravar para sempre
+
     def _record(self):
-        frames = int(self.native_rate * self.seconds)
-        audio = sd.rec(
-            frames,
+        frames_por_bloco = int(self.native_rate * self.BLOCO_SEGUNDOS)
+        blocos_de_silencio_para_parar = int(
+            self.SILENCIO_PARA_PARAR / self.BLOCO_SEGUNDOS
+        )
+        blocos_maximos = int(self.DURACAO_MAXIMA / self.BLOCO_SEGUNDOS)
+
+        blocos = []
+        comecou_a_falar = False
+        blocos_silenciosos = 0
+
+        with sd.InputStream(
             samplerate=self.native_rate,
             channels=1,
             dtype="int16",
-            device=None
-        )
-        sd.wait()
+            device=None,
+        ) as stream:
+            for _ in range(blocos_maximos):
+                dados, estourou = stream.read(frames_por_bloco)
+                if estourou:
+                    print("⚠️ Estouro no buffer de áudio")
 
-        rms = float(np.sqrt(np.mean(np.asarray(audio, dtype=np.float32) ** 2)))
-        if rms < 15:
+                bloco = np.asarray(dados).reshape(-1)
+                rms = float(np.sqrt(np.mean(bloco.astype(np.float32) ** 2)))
+                tem_voz = rms >= self.LIMIAR_RMS
+
+                if tem_voz:
+                    comecou_a_falar = True
+                    blocos_silenciosos = 0
+                elif comecou_a_falar:
+                    blocos_silenciosos += 1
+
+                # Só acumula depois que a fala começou: o silêncio inicial,
+                # enquanto a pessoa ainda não falou, não vira áudio.
+                if comecou_a_falar:
+                    blocos.append(bloco)
+                    if blocos_silenciosos >= blocos_de_silencio_para_parar:
+                        break
+
+        if not comecou_a_falar or not blocos:
             return None
 
-        return self._resample_to_16k(audio)
+        return self._resample_to_16k(np.concatenate(blocos))
 
     def _run_whisper_hidden(self, cmd):
         """
@@ -95,7 +131,7 @@ class NaturalVoiceListener:
         return p.returncode, out or "", err or ""
 
     def listen(self):
-        print(f"🟢 Fale normalmente por até {self.seconds} segundos...")
+        print("🟢 Pode falar. Eu paro sozinha quando você terminar.")
 
         try:
             audio = self._record()
