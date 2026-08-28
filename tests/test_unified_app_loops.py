@@ -15,8 +15,22 @@ import queue
 
 import pytest
 
+import core.activity_state as estado_mod
 import presence.unified_app as app_mod
 from presence.unified_app import UnifiedApp
+
+
+@pytest.fixture(autouse=True)
+def estado_isolado(tmp_path, monkeypatch):
+    """
+    Isola o estado real (data/milk_runtime_state.json) dos testes deste
+    arquivo. Desde que _idle_watch e _animate passaram a chamar
+    definir_atividade()/pulsar() de verdade (Fase 33), os objetos falsos
+    de core aqui não bastam mais para evitar escrita em disco -- a função
+    real do módulo é quem grava.
+    """
+    monkeypatch.setattr(estado_mod, "ARQUIVO", tmp_path / "runtime.json")
+    monkeypatch.setattr(estado_mod, "_atividade", "idle")
 
 
 class RootFalso:
