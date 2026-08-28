@@ -64,7 +64,12 @@ def test_formatar_inclui_o_commit_entre_parenteses():
     assert saida == "%s (%s)" % (versao, commit)
 
 
-def test_formatar_omite_os_parenteses_sem_commit(tmp_path, monkeypatch):
-    monkeypatch.setattr(version_mod, "ROOT", tmp_path)
+def test_formatar_omite_os_parenteses_sem_commit(monkeypatch):
+    # Mesma simulação de "fora de repositório" usada em
+    # test_commit_e_none_fora_de_repositorio, sem depender de onde
+    # tmp_path cai no disco real.
+    monkeypatch.setattr(
+        version_mod, "run_hidden", lambda *a, **k: _ResultadoGitFalso(128)
+    )
     versao, _ = version_info()
     assert formatar_versao() == versao
