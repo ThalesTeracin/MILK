@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS conversations (
     role TEXT NOT NULL,
     content TEXT NOT NULL,
     summary TEXT,
-    token_hint INTEGER DEFAULT 0
+    token_hint INTEGER DEFAULT 0,
+    project_key TEXT
 );
 
 CREATE TABLE IF NOT EXISTS projects (
@@ -58,6 +59,23 @@ CREATE INDEX IF NOT EXISTS idx_project_events_key ON project_events(project_key)
 CREATE INDEX IF NOT EXISTS idx_errors_hash ON errors(error_hash);
 """
 
+# Colunas acrescentadas depois que uma tabela já existia em bancos no campo.
+#
+# CREATE TABLE IF NOT EXISTS não altera tabelas existentes: em um banco
+# antigo o SCHEMA acima é aceito sem erro e a coluna nova simplesmente não
+# aparece, até o primeiro INSERT falhar com "no such column". Toda coluna
+# adicionada ao SCHEMA depois da criação original precisa ser repetida aqui.
+#
+# Só serve para ADD COLUMN, que é o que o SQLite faz sem reescrever a
+# tabela. A declaração não pode ter NOT NULL sem DEFAULT, nem UNIQUE, nem
+# PRIMARY KEY. Mudar tipo ou remover coluna exige recriar a tabela.
+MIGRATIONS = {
+    "conversations": {
+        "project_key": "TEXT",
+    },
+}
+
+
 class LongMemory:
     def __init__(self, db_path="data/milk_memory.db"):
         self.db_path = Path(db_path)
@@ -65,6 +83,29 @@ class LongMemory:
         self.conn = sqlite3.connect(self.db_path)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
+        self._migrate()
+        self.conn.commit()
+
+    def _migrate(self):
+        """
+        Acrescenta as colunas de MIGRATIONS que faltarem. Idempotente:
+        rodar em um banco já atualizado não faz nada.
+        """
+        for tabela, colunas in MIGRATIONS.items():
+            existentes = {
+                linha[1]
+                for linha in self.conn.execute("PRAGMA table_info(%s)" % tabela)
+            }
+            if not existentes:
+                # Tabela ausente neste banco; o SCHEMA já a criou com tudo.
+                continue
+            for nome, tipo in colunas.items():
+                if nome not in existentes:
+                    # Identificadores não aceitam placeholder no SQLite, e
+                    # tabela/coluna/tipo vêm de MIGRATIONS, nunca do usuário.
+                    self.conn.execute(
+                        "ALTER TABLE %s ADD COLUMN %s %s" % (tabela, nome, tipo)
+                    )
         self.conn.commit()
 
     def close(self):
@@ -73,15 +114,16 @@ class LongMemory:
         except Exception:
             pass
 
-    def add_message(self, role, content, summary=None, token_hint=0):
+    def add_message(self, role, content, summary=None, token_hint=0, project_key=None):
         self.conn.execute(
-            "INSERT INTO conversations(created_at, role, content, summary, token_hint) VALUES(?,?,?,?,?)",
+            "INSERT INTO conversations(created_at, role, content, summary, token_hint, project_key) VALUES(?,?,?,?,?,?)",
             (
                 datetime.datetime.now().isoformat(timespec="seconds"),
                 role,
                 content,
                 summary,
                 int(token_hint or 0),
+                project_key
             )
         )
         self.conn.commit()

@@ -12,7 +12,7 @@ if legacy.exists():
             role = item.get("role", "user")
             content = item.get("content", "")
             if content:
-                db.add_message(role, content)
+                db.add_message(role, content, project_key=None)  # Entradas migradas não têm projeto
         last_project = data.get("last_project")
         if last_project:
             name = str(last_project).replace("\\","/").rstrip("/").split("/")[-1]

@@ -3,12 +3,13 @@ from memory.long_memory import LongMemory
 class MemoryManager:
     def __init__(self):
         self.long = LongMemory()
+        self.active_project_key = None
 
     def user_message(self, text):
-        self.long.add_message("user", text)
+        self.long.add_message("user", text, project_key=self.active_project_key)
 
     def assistant_message(self, text):
-        self.long.add_message("assistant", text)
+        self.long.add_message("assistant", text, project_key=self.active_project_key)
 
     def context_for_ai(self):
         return self.long.recent_messages(limit=8)
@@ -29,4 +30,6 @@ class MemoryManager:
             "build",
             "Projeto criado/atualizado pelo Coding Agent."
         )
+        # Passa a marcar as próximas mensagens como pertencentes a este projeto.
+        self.active_project_key = key
         return key
