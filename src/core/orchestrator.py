@@ -4,12 +4,14 @@ from voice.listener import NaturalVoiceListener
 from voice.speaker import NaturalSpeaker
 from agents.windows_agent import WindowsAgent
 from ai.router import AIRouter
+from ai.persona import system_prompt, VOICE_HINT, CONTEXT_HINT
 from core.nlu import NaturalLanguageInterpreter
 from browser.browser_agent import BrowserAgent
 from vision.screen_agent import ScreenAgent
 from coding.coding_agent_v2 import CodingAgentV2
 from memory.memory_manager import MemoryManager
 from security.permission_manager import PermissionManager
+from knowledge.knowledge_base import KnowledgeBase
 
 # Alvos de open_app considerados sensíveis, mapeados para ações do perfil
 # de permissão em config/permission_profiles.json. "prompt de comando" e
@@ -37,6 +39,11 @@ class MilkCore:
         self.screen=ScreenAgent(self.ai)
         self.coder=CodingAgentV2(self.ai,max_repair_loops=2)
         self.memory=MemoryManager()
+        # Base de conhecimento local (data/knowledge/milk_knowledge.db),
+        # alimentada por Importar_Conhecimento.py. Existia desde a Fase 28
+        # mas nunca era consultada nas respostas reais da MILK (Fase 6,
+        # item 5) -- só em scripts de teste avulsos.
+        self.knowledge=KnowledgeBase()
         # Perfil padrão "balanced": mantém o comportamento atual (a maioria
         # das ações roda direto), mas passa a negar de verdade arbitrary_shell
         # e a exigir confirmação para ações marcadas em config/permission_profiles.json.
@@ -60,6 +67,30 @@ class MilkCore:
             self.memory.assistant_message(text)
         except Exception:
             pass
+
+    def _system_with_knowledge(self,prompt_base,query):
+        """
+        Acrescenta trechos relevantes de data/knowledge (RAG local via
+        KnowledgeBase.build_context) ao prompt de sistema, quando existir
+        algum documento com pontuação de relevância > 0 para a pergunta.
+        Silenciosamente ignora falhas (banco vazio/corrompido não deve
+        derrubar uma resposta de chat).
+
+        O parâmetro não se chama system_prompt para não sombrear a função
+        de mesmo nome importada de ai.persona.
+        """
+        try:
+            ctx=self.knowledge.build_context(query,top_k=3)
+        except Exception:
+            return prompt_base
+        if not ctx.get("context"):
+            return prompt_base
+        return (
+            prompt_base
+            + "\n\nUse as informações a seguir se forem relevantes para "
+            "responder. Não mencione que vieram de uma base de dados, "
+            "apenas responda naturalmente:\n" + ctx["context"]
+        )
 
     def handle(self,text):
         if not text:
@@ -243,9 +274,12 @@ class MilkCore:
         if intent=="chat":
             reply=result.get("reply")
             if not reply and self.ai.enabled:
+                system=self._system_with_knowledge(
+                    system_prompt(VOICE_HINT, CONTEXT_HINT),
+                    text
+                )
                 reply=self.ai.chat(
-                    "Você é MILK, assistente de voz em português brasileiro. "
-                    "Use o contexto recente, mas seja breve.",
+                    system,
                     text,
                     history=self.memory.context_for_ai(),
                     max_tokens=320
@@ -254,9 +288,12 @@ class MilkCore:
             return
 
         if self.ai.enabled:
+            system=self._system_with_knowledge(
+                system_prompt(VOICE_HINT, CONTEXT_HINT),
+                text
+            )
             reply=self.ai.chat(
-                "Você é MILK. Responda naturalmente em português brasileiro. "
-                "Use o contexto recente e não repita informações desnecessárias.",
+                system,
                 text,
                 history=self.memory.context_for_ai(),
                 max_tokens=320
