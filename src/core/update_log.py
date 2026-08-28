@@ -23,7 +23,7 @@ def linha_de_log(quando, antes, depois, resultado, detalhe=None):
     )
     if detalhe:
         # Quebras de linha destruiriam o formato de uma linha por registro.
-        linha += ": " + " ".join(str(detalhe).split("\n"))
+        linha += ": " + " ".join(str(detalhe).splitlines())
     return linha
 
 

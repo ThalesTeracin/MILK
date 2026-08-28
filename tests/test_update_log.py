@@ -29,6 +29,20 @@ def test_linha_nunca_tem_quebra_interna():
     assert "\n" not in linha
 
 
+def test_linha_remove_quebras_crlf():
+    """Normaliza \\r\\n (padrão Windows) para espaço."""
+    linha = linha_de_log(QUANDO, "32.0", "32.1", "FALHOU", "linha1\r\nlinha2\r\nlinha3")
+    assert "\n" not in linha
+    assert "\r" not in linha
+
+
+def test_linha_remove_quebras_cr():
+    """Normaliza \\r isolado (Mac antigo, saída de subprocesso) para espaço."""
+    linha = linha_de_log(QUANDO, "32.0", "32.1", "FALHOU", "linha1\rlinha2\rlinha3")
+    assert "\n" not in linha
+    assert "\r" not in linha
+
+
 def test_registrar_cria_o_diretorio_e_acrescenta(tmp_path):
     destino = tmp_path / "logs" / "update.log"
     registrar(destino, "primeira")
