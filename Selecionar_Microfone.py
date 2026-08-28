@@ -1,9 +1,19 @@
-import json
+import sys
 from pathlib import Path
+
+SRC = Path(__file__).resolve().parent / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
+import json
 import sounddevice as sd
 
-CONFIG=Path("config/audio_device.json")
-CONFIG.parent.mkdir(parents=True,exist_ok=True)
+from core.config import LOCAL_DIR
+
+# Escreve sempre em config/local/: é configuração desta máquina, e no
+# diretório versionado seria sobrescrita na próxima atualização.
+CONFIG = LOCAL_DIR / "audio_device.json"
+CONFIG.parent.mkdir(parents=True, exist_ok=True)
 
 devices=sd.query_devices()
 print("=== MICROFONES DISPONÍVEIS ===")

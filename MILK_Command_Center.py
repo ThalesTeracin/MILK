@@ -25,6 +25,8 @@ from PIL import Image, ImageTk, ImageEnhance, ImageOps
 import tkinter as tk
 from tkinter import ttk, messagebox
 
+from core.config import config_path
+
 ROOT = Path(__file__).resolve().parent
 ASSET = ROOT / "assets" / "milk_phase20.png"
 LOG = ROOT / "logs" / "command_center.log"
@@ -367,7 +369,7 @@ class MilkCommandCenter(tk.Tk):
         self.ai_info.config(text=f"Base: {base or '—'}\nModelo: {model or '—'}\nChave: {'carregada' if key else 'ausente'}")
 
     def refresh_whisper(self):
-        cfg = ROOT / "config" / "whisper_local.json"
+        cfg = config_path("whisper_local.json")
         ok = cfg.exists()
         self.whisper_state.config(text="PRONTO" if ok else "AUSENTE", fg=GREEN if ok else WARN)
 

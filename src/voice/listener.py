@@ -7,9 +7,10 @@ from pathlib import Path
 import numpy as np
 import sounddevice as sd
 
+from core.config import config_path
 from core.proc import popen_hidden
 
-CONFIG = Path("config/whisper_local.json")
+CONFIG = config_path("whisper_local.json")
 
 class NaturalVoiceListener:
     def __init__(self):

@@ -46,3 +46,10 @@ third_party/
 .idea/
 Thumbs.db
 desktop.ini
+
+# Configuração desta máquina (índice do microfone, caminhos do whisper).
+# Fica fora do git para que a atualização não sobrescreva a escolha do
+# usuário. Formato documentado em config/*.example.json.
+config/local/
+config/audio_device.json
+config/whisper_local.json

@@ -1,0 +1,6 @@
+{
+  "language": "pt",
+  "whisper_exe": "C:\\JARVIS\\third_party\\whisper-prebuilt\\Release\\whisper-cli.exe",
+  "model": "C:\\JARVIS\\models\\ggml-base.bin",
+  "seconds": 6
+}
