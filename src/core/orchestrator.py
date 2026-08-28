@@ -1,4 +1,5 @@
 from datetime import datetime
+from core.activity_state import definir_atividade
 from devops.devops_manager import DevOpsManager
 from voice.listener import NaturalVoiceListener
 from voice.speaker import NaturalSpeaker
@@ -51,18 +52,19 @@ class MilkCore:
         # Ação adiada aguardando confirmação verbal ("confirmar"). Pode vir
         # do navegador ou de um gate de permissão (open_app, coding_task, etc.).
         self._pending_confirmation=None
-        # Estado fino de atividade (Fase 6, item 4), consumido pelo overlay
-        # em src/presence/unified_app.py para animação reativa
-        # (ouvindo/pensando/falando). "listening"/"thinking" são setados
-        # pelo loop de escuta do UnifiedApp; "speaking"/"idle" aqui em say().
-        self.activity="idle"
+        # Estado fino de atividade (ouvindo/pensando/falando). Desde a fase
+        # 33 o dono é core/activity_state.py, que guarda em memória e publica
+        # em data/milk_runtime_state.json para o mini overlay, que roda em
+        # outro processo. Antes isso era um atributo daqui, e o arquivo era
+        # uma segunda verdade que ninguém escrevia.
+        definir_atividade("idle")
 
     def say(self,text):
-        self.activity="speaking"
+        definir_atividade("speaking")
         try:
             self.speaker.say(text)
         finally:
-            self.activity="idle" if self.state=="sleep" else "listening"
+            definir_atividade("idle" if self.state=="sleep" else "listening")
         try:
             self.memory.assistant_message(text)
         except Exception:

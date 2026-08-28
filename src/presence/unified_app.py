@@ -38,12 +38,14 @@ from pathlib import Path
 import tkinter as tk
 from PIL import Image, ImageEnhance, ImageTk
 
+from core.activity_state import atividade, definir_atividade, pulsar
+
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src"
 ASSET = ROOT / "assets" / "milk_presence_source.png"
 LOG = ROOT / "logs" / "presence.log"
 
-# Fase 6, item 4: rótulo/cor do overlay por estado de MilkCore.activity,
+# Fase 6, item 4: rótulo/cor do overlay por estado de core.activity_state,
 # e velocidade/profundidade do pulso do avatar em _animate(). "idle" cai no
 # valor default de PULSE_BY_ACTIVITY (pulso suave, sem rótulo).
 ACTIVITY_LABEL = {
@@ -166,7 +168,7 @@ class UnifiedApp:
                             tags="title")
 
         # Fase 6, item 4: rótulo de estado (ouvindo/pensando/falando),
-        # atualizado em _animate() a partir de self.core.activity.
+        # atualizado em _animate() a partir de core.activity_state.
         canvas.create_text(width // 2, 58,
                             text="",
                             fill="#67e8ff",
@@ -208,7 +210,7 @@ class UnifiedApp:
     def _animate(self):
         if self.visible and self.base_img is not None:
             # Fase 6, item 4: velocidade/profundidade do pulso e cor do
-            # rótulo variam com self.core.activity (ouvindo/pensando/
+            # rótulo variam com core.activity_state (ouvindo/pensando/
             # falando), atualizado pelo loop de escuta e por MilkCore.say().
             # Limitação conhecida: handle() roda de forma síncrona na
             # mesma thread do Tk, então durante uma chamada de IA longa o
@@ -219,7 +221,7 @@ class UnifiedApp:
             # Mesmo motivo de _poll_events: sem esta proteção, um erro aqui
             # congelaria o avatar de vez, em vez de custar um quadro.
             try:
-                activity = getattr(self.core, "activity", "idle")
+                activity = atividade()
                 step, depth = PULSE_BY_ACTIVITY.get(activity, PULSE_DEFAULT)
                 self.pulse = (self.pulse + step) % 60
                 b = 0.96 + (depth * (1 - abs(30 - self.pulse) / 30))
@@ -245,7 +247,7 @@ class UnifiedApp:
         """
         _log("Loop de escuta unificado iniciado.")
         while self.running:
-            self.core.activity = "listening"
+            definir_atividade("listening")
             try:
                 heard = self.core.voice.listen()
             except Exception as e:
@@ -253,7 +255,7 @@ class UnifiedApp:
                 time.sleep(1)
                 continue
             if heard:
-                self.core.activity = "thinking"
+                definir_atividade("thinking")
                 _log(f"Ouvi: {heard}")
                 self.events.put(heard)
 
@@ -322,8 +324,12 @@ class UnifiedApp:
             if self.visible and self.core.state != "sleep" and self.last_activity:
                 if time.time() - self.last_activity > self.idle_timeout:
                     self.core.state = "sleep"
-                    self.core.activity = "idle"
+                    definir_atividade("idle")
                     self._fade_out()
+            # O estado só é escrito quando muda. Sem este pulso, a MILK
+            # parada ouvindo teria o carimbo envelhecendo e o mini overlay
+            # a declararia desligada enquanto ela está viva.
+            pulsar()
         except Exception:
             _log(f"Erro no controle de ociosidade:\n{traceback.format_exc()}")
         finally:
