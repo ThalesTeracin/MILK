@@ -19,6 +19,7 @@ from voice.listener import NaturalVoiceListener
 from voice.speaker import NaturalSpeaker
 from agents.windows_agent import WindowsAgent
 from core.nlu import HybridNLU
+from ai.persona import system_prompt, VOICE_HINT, CONTEXT_HINT
 
 try:
     from ai.router import AIRouter
@@ -79,8 +80,7 @@ while True:
     if intent=="chat" and not reply and ai and getattr(ai,"enabled",False):
         try:
             reply=ai.chat(
-                "Você é MILK, assistente de voz em português brasileiro. "
-                "Converse naturalmente, entenda contexto e seja objetiva e útil.",
+                system_prompt(VOICE_HINT, CONTEXT_HINT),
                 text,
                 history=history[-10:],
                 max_tokens=300

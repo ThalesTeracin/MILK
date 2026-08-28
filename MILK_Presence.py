@@ -24,6 +24,7 @@ if str(SRC) not in sys.path:
 
 from voice.listener import NaturalVoiceListener
 from voice.speaker import NaturalSpeaker
+from ai.persona import system_prompt, VOICE_HINT
 
 ASSET = ROOT / "assets" / "milk_presence_source.png"
 LOG = ROOT / "logs" / "presence.log"
@@ -263,9 +264,7 @@ class PresenceOverlay:
 
         if ai and getattr(ai, "enabled", False):
             reply = ai.chat(
-                "Você é MILK, uma assistente de voz em português brasileiro. "
-                "Converse naturalmente, seja breve e útil. "
-                "O usuário está falando com você por voz.",
+                system_prompt(VOICE_HINT),
                 text,
                 history=[],
                 max_tokens=260
