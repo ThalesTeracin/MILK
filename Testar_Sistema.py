@@ -16,8 +16,10 @@ Codigo de saida 0 se nao houver nenhuma FALHA. Avisos nao reprovam.
 import importlib
 import json
 import os
+import socket
 import sqlite3
 import sys
+import urllib.parse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -253,6 +255,51 @@ else:
             falha("9router_custom tem chave mas NINEROUTER_BASE_URL esta vazio")
         if not chaves.get("NINEROUTER_MODEL"):
             falha("9router_custom tem chave mas NINEROUTER_MODEL esta vazio")
+
+
+# --------------------------------------------------------------- 6b
+secao("6b. Cerebro de IA (o endereco responde?)")
+
+# Ate a fase 33 esta secao nao existia: a de cima confirmava que a chave
+# estava no .env e passava. Em 28/08/2026 a MILK ficou horas sem responder
+# nada com AI_PROVIDER_ORDER=9router_custom apontando para
+# localhost:20128 com o 9Router desligado -- chave presente, endereco
+# morto, e a verificacao dizia que estava tudo bem.
+#
+# Abre uma conexao TCP e fecha. Nao chama o modelo: nao gasta cota nem
+# token, e nao prova que a chave vale -- prova que existe alguem
+# escutando, que era o que faltava.
+if not com_chave:
+    aviso("nenhum provedor com chave; nada a conectar")
+else:
+    for pid in com_chave:
+        cfg = provedores.get(pid, {})
+        rotulo = cfg.get("label", pid)
+        base = cfg.get("base_url") or ""
+        if pid == "9router_custom":
+            base = chaves.get("NINEROUTER_BASE_URL", "")
+
+        if not base:
+            falha(rotulo + ": sem base_url para conectar")
+            continue
+
+        partes = urllib.parse.urlparse(base)
+        host = partes.hostname
+        porta = partes.port or (443 if partes.scheme == "https" else 80)
+        if not host:
+            falha(rotulo + ": base_url invalida (" + base + ")")
+            continue
+
+        try:
+            with socket.create_connection((host, porta), timeout=4):
+                pass
+            ok(rotulo + ": " + host + ":" + str(porta) + " respondendo")
+        except Exception as e:
+            local = host in ("localhost", "127.0.0.1", "::1")
+            recado = rotulo + ": " + host + ":" + str(porta) + " nao responde (" + type(e).__name__ + ")"
+            if local:
+                recado += " -- servico local desligado? para o 9Router: 9router -t -n"
+            falha(recado)
 
 
 # ---------------------------------------------------------------- 7

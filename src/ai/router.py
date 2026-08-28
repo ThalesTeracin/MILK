@@ -80,7 +80,12 @@ class AIRouter:
                 {"role": "user", "content": "Teste de conexão da MILK."}
             ],
             "temperature": 0,
-            "max_tokens": 20
+            # 20 tokens nao bastam: modelos de raciocinio (o glm-5.3-flash
+            # servido pelo 9Router e um) gastam o orcamento inteiro no campo
+            # "reasoning" e devolvem content=null. Com 20, este teste dizia
+            # que a IA estava fora do ar enquanto chat() respondia normal --
+            # verificado em 28/08/2026.
+            "max_tokens": 200
         })
 
         if not data:
