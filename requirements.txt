@@ -17,10 +17,13 @@ google-auth>=2.40.0
 google-auth-oauthlib>=1.2.2
 msal>=1.33.0
 requests>=2.32.0
-python-docx>=1.1.2
 openpyxl>=3.1.5
 reportlab>=4.2.5
-python-pptx>=1.0.2
+
+# python-docx foi removido: src/documents/docx_agent.py passou a gerar o
+# .docx com zipfile + xml da stdlib. Motivo em docs/dependencias-nativas.md.
+# python-pptx continua sendo usado, mas e opcional: ver
+# requirements-optional.txt.
 
 # Testes (Fase 6)
 pytest>=8.0.0

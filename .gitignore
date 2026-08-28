@@ -53,3 +53,6 @@ desktop.ini
 config/local/
 config/audio_device.json
 config/whisper_local.json
+
+# Documentos gerados pelo DocumentManager
+output/

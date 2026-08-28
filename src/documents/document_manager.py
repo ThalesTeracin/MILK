@@ -74,10 +74,17 @@ class DocumentManager:
                 path
             )
         else:
-            result=self.pptx.create(
-                spec.get("title"),
-                (spec.get("slides") or [])[:20],
-                path
-            )
+            try:
+                result=self.pptx.create(
+                    spec.get("title"),
+                    (spec.get("slides") or [])[:20],
+                    path
+                )
+            except ImportError as e:
+                # python-pptx, ou o lxml de que ele depende, indisponivel.
+                # Os outros formatos continuam valendo; ver pptx_agent.
+                return {"ok":False,"message":
+                        f"Geração de PPTX indisponível nesta máquina: {e}. "
+                        "Posso entregar o mesmo conteúdo em DOCX ou PDF."}
 
         return {"ok":True,"type":typ,"path":result,"title":spec.get("title")}

@@ -1,0 +1,19 @@
+# Dependências opcionais da MILK.
+#
+# O sistema sobe e funciona sem nada daqui. Cada pacote habilita um
+# formato extra; quando ausente, o agente correspondente degrada com
+# mensagem tratada em vez de quebrar o import.
+#
+# Instale com:
+#     python -m pip install -r requirements-optional.txt
+#
+# Aviso: estes pacotes trazem extensões nativas (.pyd). Em máquinas com o
+# Smart App Control do Windows ligado, um .pyd de baixa reputação pode ser
+# bloqueado e o import falha mesmo com o pacote instalado. Por isso eles
+# estão fora do requirements.txt: o instalador da Fase 32 não deve
+# depender de binário que a política do sistema pode barrar.
+# Detalhes em docs/dependencias-nativas.md.
+
+# Geração de .pptx (apresentações). Puxa lxml.
+# Sem ele, pedidos de PPTX respondem sugerindo DOCX ou PDF.
+python-pptx>=1.0.2
