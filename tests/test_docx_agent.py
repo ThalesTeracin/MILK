@@ -263,3 +263,44 @@ def test_o_modulo_nao_importa_python_docx_nem_lxml():
 
     assert "docx" not in importados
     assert "lxml" not in importados
+
+
+# --------------------------------------------------- quebras de linha
+
+def test_corpo_com_crlf_separa_paragrafos_igual_ao_lf(agente, tmp_path):
+    """
+    Texto vindo do Windows chega com \r\n. Sem normalizar, o separador de
+    bloco "\n\n" nunca casa e o documento inteiro vira um paragrafo so --
+    e, se o corpo comecar com "# ", esse paragrafo unico ainda herda o
+    estilo de heading e engole o resto do texto.
+    """
+    lf, _ = gerar(agente, tmp_path, body="# Titulo\n\nUm.\n\nDois.", nome="lf.docx")
+    crlf, _ = gerar(agente, tmp_path, body="# Titulo\r\n\r\nUm.\r\n\r\nDois.", nome="crlf.docx")
+
+    ps_lf = paragrafos(documento_xml(lf))
+    ps_crlf = paragrafos(documento_xml(crlf))
+
+    assert len(ps_crlf) == len(ps_lf) == 4
+    assert [estilo_de(p) for p in ps_crlf] == [estilo_de(p) for p in ps_lf]
+    assert [texto_do(p) for p in ps_crlf] == [texto_do(p) for p in ps_lf]
+
+
+def test_quebra_simples_com_crlf_nao_deixa_cr_no_texto(agente, tmp_path):
+    """O \r sobrevivente apareceria dentro do w:t e sujaria o documento."""
+    destino, _ = gerar(agente, tmp_path, body="linha um\r\nlinha dois")
+
+    ps = paragrafos(documento_xml(destino))
+
+    assert "\r" not in texto_do(ps[1])
+    assert texto_do(ps[1]) == "linha umlinha dois"
+
+
+def test_corpo_com_cr_isolado_tambem_separa_paragrafos(agente, tmp_path):
+    """Mac classico e alguns editores ainda produzem \r sozinho."""
+    destino, _ = gerar(agente, tmp_path, body="Um.\r\rDois.")
+
+    ps = paragrafos(documento_xml(destino))
+
+    assert len(ps) == 3
+    assert texto_do(ps[1]) == "Um."
+    assert texto_do(ps[2]) == "Dois."

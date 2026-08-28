@@ -107,6 +107,17 @@ SECAO = (
 )
 
 
+def _normalizar(texto):
+    """
+    Reduz \r\n e \r sozinho a \n.
+
+    Texto vindo do Windows chega com \r\n. Sem isso, o separador de
+    bloco "\n\n" nunca casa e o documento inteiro vira um paragrafo
+    so; o \r que sobra ainda entra no w:t e suja o conteudo.
+    """
+    return texto.replace("\r\n", "\n").replace("\r", "\n")
+
+
 def _run(texto, negrito=False, tamanho=None):
     """
     Um w:r com o texto dado. Quebra simples vira w:br dentro do mesmo run,
@@ -122,7 +133,7 @@ def _run(texto, negrito=False, tamanho=None):
         )
 
     partes = []
-    for i, linha in enumerate(texto.split("\n")):
+    for i, linha in enumerate(_normalizar(texto).split("\n")):
         if i:
             partes.append("<w:br/>")
         # xml:space="preserve" impede o Word de colapsar os espacos.
@@ -150,7 +161,7 @@ def _corpo_em_paragrafos(body):
     branco; '# ' e '## ' no inicio do bloco viram heading.
     """
     paragrafos = []
-    for bloco in (body or "").split("\n\n"):
+    for bloco in _normalizar(body or "").split("\n\n"):
         bloco = bloco.strip()
         if not bloco:
             continue
