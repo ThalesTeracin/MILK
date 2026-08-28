@@ -25,6 +25,10 @@ from PIL import Image, ImageTk, ImageEnhance, ImageOps
 import tkinter as tk
 from tkinter import ttk, messagebox
 
+SRC = Path(__file__).resolve().parent / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
 from core.config import config_path
 
 ROOT = Path(__file__).resolve().parent

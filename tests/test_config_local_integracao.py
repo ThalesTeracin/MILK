@@ -54,3 +54,26 @@ def test_selecionar_microfone_grava_em_config_local():
     ]
     assert len(destinos) == 1, "esperava uma única atribuição de CONFIG"
     assert "LOCAL_DIR" in ast.dump(destinos[0]), "CONFIG não aponta para LOCAL_DIR"
+
+
+def test_scripts_da_raiz_importam_de_src():
+    """
+    Scripts na raiz não têm src/ no sys.path por padrão. Quem importa de
+    src/ precisa inserir o caminho antes, ou quebra com ModuleNotFoundError
+    ao ser executado direto.
+
+    Selecionar_Microfone.py chama input() no nível do módulo: usamos
+    stdin=DEVNULL (gera EOFError, não ModuleNotFoundError) e um timeout
+    para não travar o teste.
+    """
+    import sys as _sys
+
+    for script in ["MILK_Command_Center", "Selecionar_Microfone"]:
+        resultado = subprocess.run(
+            [_sys.executable, "-c", "import %s" % script],
+            capture_output=True, text=True, cwd=CONFIG_DIR.parent,
+            stdin=subprocess.DEVNULL, timeout=15,
+        )
+        assert "ModuleNotFoundError" not in resultado.stderr, (
+            "%s não é importável da raiz: %s" % (script, resultado.stderr[-300:])
+        )
