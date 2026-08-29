@@ -73,3 +73,136 @@ def test_le_o_arquivo_com_bom(config):
     config.write_text(json.dumps({"input_device": 7}), encoding="utf-8-sig")
 
     assert indice_de_entrada() == 7
+
+
+# ------------------------------------------------- microfone por nome
+#
+# Um indice do PortAudio nao identifica um microfone entre reinicios.
+# Conectar ou desconectar um fone insere ou remove entradas na lista e
+# renumera tudo o que vem depois. Observado nesta maquina, na mesma
+# sessao, com o headset saindo da lista entre uma enumeracao e outra:
+#
+#   antes:  15 | Windows WASAPI | Grupo de Microfones (Qualcomm) | 48000
+#   depois: 15 | Windows WDM-KS | Headset ()                     |  8000
+#
+# O MILK abriu o dispositivo errado sem reclamar -- o indice continuava
+# valido, so apontava para outro aparelho -- e o Whisper transcreveu
+# ruido ("[MUSICA DE FUNDO]", "BALF!") em vez da fala. Por isso o arquivo
+# passa a guardar nome e host API, e o indice e resolvido na abertura.
+
+
+@pytest.fixture
+def entradas(monkeypatch):
+    """Substitui a enumeracao do PortAudio por uma lista controlada."""
+    lista = []
+    monkeypatch.setattr(audio_mod, "listar_entradas", lambda: lista)
+    return lista
+
+
+def test_resolve_o_indice_atual_pelo_nome(config, entradas):
+    """O caso que quebrou: o indice salvo envelheceu, o nome não."""
+    entradas.extend([
+        (0, "Mapeador de som da Microsoft - Input", "MME"),
+        (9, "Grupo de Microfones (Qualcomm)", "Windows WASAPI"),
+        (15, "Headset ()", "Windows WDM-KS"),
+    ])
+    config.write_text(json.dumps({
+        "input_name": "Grupo de Microfones (Qualcomm)",
+        "input_hostapi": "Windows WASAPI",
+        "input_device": 15,
+    }), encoding="utf-8")
+
+    assert indice_de_entrada() == 9
+
+
+def test_o_nome_manda_no_indice_salvo(config, entradas):
+    """
+    O indice fica no arquivo só como registro do que foi escolhido. Se
+    ele mandasse, a correção não teria efeito nenhum.
+    """
+    entradas.extend([
+        (3, "Microfone do Headset", "Windows WASAPI"),
+        (9, "Grupo de Microfones (Qualcomm)", "Windows WASAPI"),
+    ])
+    config.write_text(json.dumps({
+        "input_name": "Grupo de Microfones (Qualcomm)",
+        "input_hostapi": "Windows WASAPI",
+        "input_device": 3,
+    }), encoding="utf-8")
+
+    assert indice_de_entrada() == 9
+
+
+def test_microfone_salvo_ausente_avisa_e_cai_no_padrao(config, entradas, capsys):
+    """
+    Desconectou o microfone escolhido. Abrir o vizinho calado seria o
+    defeito de novo; o certo é dizer qual sumiu e usar o padrão.
+    """
+    entradas.extend([(0, "Mapeador de som da Microsoft - Input", "MME")])
+    config.write_text(json.dumps({
+        "input_name": "Microfone do Headset",
+        "input_hostapi": "Windows WASAPI",
+        "input_device": 3,
+    }), encoding="utf-8")
+
+    assert indice_de_entrada() is None
+    assert "Microfone do Headset" in capsys.readouterr().out
+
+
+def test_mesmo_nome_em_outra_host_api_nao_casa(config, entradas, capsys):
+    """
+    O mesmo aparelho aparece sob várias host APIs, e elas não são
+    intercambiáveis: o WDM-KS desta máquina nem abre em modo bloqueante
+    ('Blocking API not supported yet'). Casar só o nome traria de volta o
+    dispositivo que não funciona.
+    """
+    entradas.extend([(18, "Grupo de Microfones (Qualcomm)", "Windows WDM-KS")])
+    config.write_text(json.dumps({
+        "input_name": "Grupo de Microfones (Qualcomm)",
+        "input_hostapi": "Windows WASAPI",
+    }), encoding="utf-8")
+
+    assert indice_de_entrada() is None
+    assert "Windows WASAPI" in capsys.readouterr().out
+
+
+def test_nome_sem_host_api_casa_so_pelo_nome(config, entradas):
+    """Arquivo escrito à mão, sem a host API: ainda melhor que índice."""
+    entradas.extend([(9, "Grupo de Microfones (Qualcomm)", "Windows WASAPI")])
+    config.write_text(json.dumps({
+        "input_name": "Grupo de Microfones (Qualcomm)",
+    }), encoding="utf-8")
+
+    assert indice_de_entrada() == 9
+
+
+def test_config_antiga_so_com_indice_continua_valendo(config, entradas):
+    """
+    Quem já tem o arquivo antigo não fica sem microfone até rodar o
+    Selecionar_Microfone.py de novo.
+    """
+    entradas.extend([(24, "Microphone Array", "Windows WDM-KS")])
+    config.write_text(json.dumps({"input_device": 24}), encoding="utf-8")
+
+    assert indice_de_entrada() == 24
+
+
+def test_nome_que_nao_e_texto_cai_no_indice(config, entradas):
+    entradas.extend([(9, "Grupo de Microfones (Qualcomm)", "Windows WASAPI")])
+    config.write_text(json.dumps({"input_name": 7, "input_device": 24}), encoding="utf-8")
+
+    assert indice_de_entrada() == 24
+
+
+def test_enumeracao_que_falha_nao_deixa_o_milk_sem_voz(config, monkeypatch, capsys):
+    """Sem placa de áudio o query_devices levanta; isso não pode subir."""
+    def explode():
+        raise OSError("PortAudio não inicializou")
+
+    monkeypatch.setattr(audio_mod, "listar_entradas", explode)
+    config.write_text(json.dumps({
+        "input_name": "Grupo de Microfones (Qualcomm)",
+    }), encoding="utf-8")
+
+    assert indice_de_entrada() is None
+    assert "PortAudio" in capsys.readouterr().out

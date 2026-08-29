@@ -1,4 +1,4 @@
-<#
+﻿<#
     Instalação limpa do MILK.
 
     Seguro de rodar numa máquina já instalada: cada passo verifica antes
@@ -79,11 +79,17 @@ if (Test-Path (Join-Path $WhisperDir "Release\whisper-cli.exe")) {
 
 # --- 6. Microfone ---
 $audio = Get-Content (Join-Path $local "audio_device.json") -Raw | ConvertFrom-Json
-if ($audio.input_device -eq 0) {
+# O que conta como configurado e o nome, nao o indice: o indice e a
+# posicao na lista do PortAudio e muda quando um fone conecta ou sai.
+# O ramo do input_device atende quem ainda tem o arquivo no formato antigo.
+if ([string]::IsNullOrWhiteSpace($audio.input_name) -and $audio.input_device -eq 0) {
     Write-Host "Escolha o microfone:" -ForegroundColor Cyan
     & python "Selecionar_Microfone.py"
+} elseif ([string]::IsNullOrWhiteSpace($audio.input_name)) {
+    Write-Host "Microfone configurado por indice ($($audio.input_device)), formato antigo." -ForegroundColor Yellow
+    Write-Host "Rode Selecionar_Microfone.py para gravar o nome; por indice o MILK pode abrir o microfone errado."
 } else {
-    Write-Host "Microfone já configurado (índice $($audio.input_device))."
+    Write-Host "Microfone ja configurado ($($audio.input_name))."
 }
 
 # --- 7. Tarefa agendada (só com -RegistrarTarefa) ---
