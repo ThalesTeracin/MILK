@@ -75,8 +75,16 @@ class AIRouter:
     # "length": a IA esta no ar e funcionando, e a MILK dizia "Nao
     # consegui responder agora". Estes tetos deixam folga para pensar e
     # ainda responder.
-    TOKENS_CHAT = 1200
-    TOKENS_JSON = 800
+    # Ajustáveis pelo .env: quem trocar para um modelo que não raciocina
+    # pode baixar, e quem pedir resposta longa a um que raciocina precisa
+    # subir. 2000 cobre o raciocínio do glm-5.3-flash mais uma resposta de
+    # alguns parágrafos. Medido contra o 9Router real: com 1200 o conteúdo
+    # nem começava; com 2000 a resposta saía cortada no meio da frase e o
+    # ask_json com 800 ainda estourava no raciocínio, derrubando o NLU
+    # para o chat. Custa latência -- uma resposta levou 49 s -- mas
+    # resposta cortada é pior do que resposta lenta.
+    TOKENS_CHAT = int(os.getenv("AI_MAX_TOKENS_CHAT", "3000"))
+    TOKENS_JSON = int(os.getenv("AI_MAX_TOKENS_JSON", "1500"))
 
     def _conteudo(self, data):
         """Texto da resposta, ou None -- dizendo por que, quando vazio."""
