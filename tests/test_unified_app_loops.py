@@ -169,12 +169,14 @@ def test_o_fade_segue_o_estado_e_nao_o_comando(app, monkeypatch):
 def test_animate_reagenda_mesmo_falhando(app, registros, monkeypatch):
     app.visible = True
     app.base_img = object()
-    monkeypatch.setattr(app, "_render_avatar", lambda b: 1 / 0)
+    # Assinatura com *a: desde a fase 33 o render recebe brilho, escala
+    # e deslocamento, não só o brilho.
+    monkeypatch.setattr(app, "_render_avatar", lambda *a: 1 / 0)
     app.core = type("CoreFalso", (), {"activity": "thinking"})()
 
     app._animate()
 
-    assert app.root.agendados == [(120, app._animate)]
+    assert app.root.agendados == [(app_mod.INTERVALO_DE_QUADRO, app._animate)]
 
 
 # --------------------------------------------------------- _idle_watch

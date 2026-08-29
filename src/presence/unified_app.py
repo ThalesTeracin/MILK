@@ -39,6 +39,7 @@ import tkinter as tk
 from PIL import Image, ImageEnhance, ImageTk
 
 from core.activity_state import atividade, definir_atividade, pulsar
+from presence.avatar_motion import quadro as quadro_de_movimento
 
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src"
@@ -53,11 +54,18 @@ ACTIVITY_LABEL = {
     "thinking": ("pensando…", "#f4c95d"),
     "speaking": ("falando…", "#7CFC98"),
 }
-PULSE_BY_ACTIVITY = {
-    "speaking": (2, 0.14),
-    "thinking": (1, 0.05),
-}
-PULSE_DEFAULT = (1, 0.08)
+# Fase 33: o pulso de brilho virou movimento de verdade -- respiração,
+# balanço e tremor -- em presence/avatar_motion.py. Os perfis por
+# atividade moram lá, junto com as funções que os aplicam.
+#
+# 40 ms = 25 quadros por segundo. Antes eram 120 ms, e não por escolha:
+# _render_avatar refazia o thumbnail LANCZOS a partir da imagem original
+# a cada quadro, 47 ms medidos, 39% da thread do Tk para desenhar uma
+# imagem parada. Com a base redimensionada em cache o quadro cai para
+# 7,2 ms, e sobra orçamento para o movimento.
+INTERVALO_DE_QUADRO = 40
+TAMANHO_DO_AVATAR = (440, 585)
+CENTRO_DO_AVATAR = (235, 335)
 
 
 def _ensure_paths():
@@ -99,7 +107,10 @@ class UnifiedApp:
         self.canvas = None
         self.photo = None
         self.base_img = None
-        self.pulse = 0
+        # Base já no tamanho de exibição: o redimensionamento pesado
+        # acontece uma vez, não a cada quadro.
+        self.base_escalada = None
+        self.inicio_da_animacao = time.time()
         # Correção 1 da Task 6, achado 3: trava o fade-in a uma tentativa
         # por ciclo acordado (ver _idle_watch), pra não retentar a cada
         # segundo pra sempre se _ensure_overlay()/deiconify() falhar.
@@ -111,7 +122,7 @@ class UnifiedApp:
         threading.Thread(target=self._scheduler_loop, daemon=True).start()
         threading.Thread(target=self._trabalho_loop, daemon=True).start()
 
-        self.root.after(120, self._animate)
+        self.root.after(INTERVALO_DE_QUADRO, self._animate)
         self.root.after(1000, self._idle_watch)
 
     # ---------------- avatar (portado de MILK_Presence.py) ----------------
@@ -183,14 +194,42 @@ class UnifiedApp:
         self.canvas = canvas
         self._render_avatar(1.0)
 
-    def _render_avatar(self, brightness=1.0):
+    def _base_para_desenho(self):
+        """A imagem já no tamanho de exibição, redimensionada uma vez só."""
+        if self.base_escalada is None and self.base_img is not None:
+            base = self.base_img.copy()
+            base.thumbnail(TAMANHO_DO_AVATAR, Image.Resampling.LANCZOS)
+            self.base_escalada = base
+        return self.base_escalada
+
+    def _render_avatar(self, brightness=1.0, escala=1.0, dx=0.0, dy=0.0):
         if self.base_img is None or self.canvas is None:
             return
-        img = ImageEnhance.Brightness(self.base_img).enhance(brightness)
-        img.thumbnail((440, 585), Image.Resampling.LANCZOS)
+
+        base = self._base_para_desenho()
+        if base is None:
+            return
+
+        img = base
+        if abs(escala - 1.0) > 0.0005:
+            # BILINEAR, não LANCZOS: a diferença não se vê num ajuste de
+            # 1% e o custo por quadro é outro.
+            img = base.resize(
+                (max(1, int(base.width * escala)), max(1, int(base.height * escala))),
+                Image.Resampling.BILINEAR,
+            )
+        if abs(brightness - 1.0) > 0.0005:
+            img = ImageEnhance.Brightness(img).enhance(brightness)
+
         self.photo = ImageTk.PhotoImage(img)
         self.canvas.delete("avatar")
-        self.canvas.create_image(235, 335, image=self.photo, anchor="center", tags="avatar")
+        self.canvas.create_image(
+            CENTRO_DO_AVATAR[0] + dx,
+            CENTRO_DO_AVATAR[1] + dy,
+            image=self.photo,
+            anchor="center",
+            tags="avatar",
+        )
 
     def _fade_in(self):
         self._ensure_overlay()
@@ -226,14 +265,17 @@ class UnifiedApp:
             # um quadro perdido, em vez de congelar o avatar de vez.
             try:
                 activity = atividade()
-                step, depth = PULSE_BY_ACTIVITY.get(activity, PULSE_DEFAULT)
-                self.pulse = (self.pulse + step) % 60
-                b = 0.96 + (depth * (1 - abs(30 - self.pulse) / 30))
-                self._render_avatar(b)
+                # O movimento é função do relógio, não de um contador que
+                # este laço incrementa: quadro perdido não tira a animação
+                # de fase.
+                m = quadro_de_movimento(
+                    time.time() - self.inicio_da_animacao, activity
+                )
+                self._render_avatar(m["brilho"], m["escala"], m["dx"], m["dy"])
                 self._render_status(activity)
             except Exception:
                 _log(f"Erro ao desenhar o avatar:\n{traceback.format_exc()}")
-        self.root.after(120, self._animate)
+        self.root.after(INTERVALO_DE_QUADRO, self._animate)
 
     def _render_status(self, activity):
         if self.canvas is None:
