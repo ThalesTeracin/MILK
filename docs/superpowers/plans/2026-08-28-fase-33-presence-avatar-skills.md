@@ -1620,13 +1620,13 @@ git commit -m "feat: o cérebro sai da thread do Tk e o avatar não congela mais
 
 ## Verificação final da fase
 
-- [ ] `python -m pytest -q` — todos passam
-- [ ] `python Testar_Sistema.py` — `RESULTADO: tudo passou`
-- [ ] `git status --porcelain` vazio
-- [ ] `grep -rnE "self\.activity([^_]|$)|core\.activity([^_]|$)" --include=*.py src/ | grep -v __pycache__` não retorna nada — a segunda verdade sumiu.
+- [x] `python -m pytest -q` — todos passam
+- [x] `python Testar_Sistema.py` — `RESULTADO: tudo passou`
+- [x] `git status --porcelain` vazio
+- [x] `grep -rnE "self\.activity([^_]|$)|core\.activity([^_]|$)" --include=*.py src/ | grep -v __pycache__` não retorna nada — a segunda verdade sumiu.
       O `[^_]` é necessário: sem ele o grep casa com as menções legítimas ao
       módulo `core.activity_state`, que é justamente o dono novo do estado.
-- [ ] `grep -rnE "^\s*RISKY[A-Z_]* *=" --include=*.py src/ | grep -v __pycache__`
+- [x] `grep -rnE "^\s*RISKY[A-Z_]* *=" --include=*.py src/ | grep -v __pycache__`
       retorna só `src/mcp/mcp_manager.py` — o gate duplicado do router sumiu.
       A busca é pela definição, não pela palavra: a docstring do
       `advanced_router` cita `RISKY` de propósito, para registrar o que saiu.
@@ -1635,8 +1635,37 @@ git commit -m "feat: o cérebro sai da thread do Tk e o avatar não congela mais
       do vocabulário fechado de `config/permission_profiles.json`, e ali a
       heurística de substring é o que garante o padrão seguro — tool
       desconhecida cai em confirmação em vez de executar direto.
-- [ ] `grep -n "self.permissions.check" src/skills/advanced_router.py` retorna
+- [x] `grep -n "self.permissions.check" src/skills/advanced_router.py` retorna
       a linha — o router decide pelo `PermissionManager`, não por conjunto próprio
-- [ ] `python -c "import sys; sys.path.insert(0,'src'); from core.orchestrator import MilkCore; MilkCore().handle('milk, qual o status do git')"` fala a branch
-- [ ] As duas verificações manuais da Task 6, passo 8, registradas com o que
-      foi observado
+- [x] `python -c "import sys; sys.path.insert(0,'src'); from core.orchestrator import MilkCore; MilkCore().handle('milk, qual o status do git')"` fala a branch
+- [x] As duas verificações manuais da Task 6, passo 8, registradas com o que
+      foi observado — **feitas por instrumentação, não visualmente.** Quem
+      executou não tinha como olhar a tela, e o microfone desta máquina não
+      estava produzindo texto reconhecível na ocasião (defeito à parte, ver
+      abaixo). Em vez de dar as duas por aprovadas sem base, cada uma foi
+      medida na propriedade que o olho verificaria:
+
+      **Primeira — o pulso continua enquanto a resposta não chega.** Quem
+      pulsa é o `_idle_watch`, na thread do Tk, de segundo em segundo,
+      carimbando `data/milk_runtime_state.json`. Rodou-se o app de verdade,
+      com o `MilkCore` de verdade e o 9Router no ar, com o laço de escuta
+      substituído (o ruído ambiente enfileirava `handle()` por cima da
+      medição), enfileirando uma pergunta que puxa a IA. O `handle` durou
+      **49,4 s**; durante ele saíram **51 carimbos distintos**, com intervalo
+      máximo de **1,51 s** entre eles, e os estados vistos foram `listening` e
+      `speaking`. Um congelamento da thread do Tk apareceria como um buraco do
+      tamanho do `handle`. Não apareceu.
+
+      **Segunda — `MILK · DESLIGADA` em até cinco segundos.** Subiu-se um
+      processo real da MILK, confirmou-se o rótulo `MILK · PRONTA`, matou-se o
+      processo e mediu-se quanto o par `ler_do_arquivo` + `rotulo_de` demora a
+      virar. Virou em **5,0 s**, que é o próprio `LIMITE_DE_FRESCOR`: o último
+      carimbo sai junto com a morte do processo, então a virada cai no limite.
+      O mini overlay redesenha a cada 150 ms, então o que se vê na tela é esse
+      mesmo instante.
+
+      **O que isso não cobre.** Nenhuma das duas olhou pixel. Um defeito que
+      deixasse o laço girando e o desenho parado — janela não redesenhada,
+      avatar sumido, overlay atrás de outra janela — passaria por aqui. Se
+      alguém com acesso à tela repetir os dois passos do jeito original, vale
+      substituir este registro.
