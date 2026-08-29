@@ -69,6 +69,41 @@ class AIRouter:
             self._log(f"Resposta não-JSON: {e} | body={(r.text or '')[:2000]}")
             return None
 
+    # Modelos de raciocinio (o glm-5.3-flash servido pelo 9Router e um)
+    # cobram o raciocinio do mesmo orcamento da resposta. Com orcamento
+    # curto, "reasoning" enche, "content" volta null e finish_reason vira
+    # "length": a IA esta no ar e funcionando, e a MILK dizia "Nao
+    # consegui responder agora". Estes tetos deixam folga para pensar e
+    # ainda responder.
+    TOKENS_CHAT = 1200
+    TOKENS_JSON = 800
+
+    def _conteudo(self, data):
+        """Texto da resposta, ou None -- dizendo por que, quando vazio."""
+        try:
+            escolha = data["choices"][0]
+            texto = (escolha["message"]["content"] or "").strip()
+        except Exception:
+            self._log(f"Formato de resposta inesperado: {json.dumps(data, ensure_ascii=False)[:1500]}")
+            return None
+
+        if texto:
+            return texto
+
+        motivo = escolha.get("finish_reason") or escolha.get("native_finish_reason")
+        pensou = bool((escolha.get("message") or {}).get("reasoning"))
+        if motivo == "length" and pensou:
+            self._log(
+                "o modelo gastou todo o max_tokens no raciocínio e não sobrou "
+                "resposta. Aumente max_tokens ou troque para um modelo que "
+                "não raciocina."
+            )
+        elif motivo == "length":
+            self._log("resposta cortada por max_tokens antes de qualquer conteúdo.")
+        else:
+            self._log(f"a IA respondeu vazio (finish_reason={motivo!r}).")
+        return None
+
     def test(self):
         if not self.enabled:
             return {"ok": False, "error": "Configuração ausente no .env"}
@@ -98,7 +133,7 @@ class AIRouter:
 
         return {"ok": bool(text), "reply": text, "raw": data}
 
-    def chat(self, system, user, history=None, max_tokens=300):
+    def chat(self, system, user, history=None, max_tokens=None):
         if not self.enabled:
             return None
 
@@ -119,19 +154,15 @@ class AIRouter:
             "model": self.model,
             "messages": messages,
             "temperature": 0.35,
-            "max_tokens": max_tokens
+            "max_tokens": max_tokens or self.TOKENS_CHAT
         })
 
         if not data:
             return None
 
-        try:
-            return (data["choices"][0]["message"]["content"] or "").strip() or None
-        except Exception:
-            self._log(f"Formato de resposta inesperado: {json.dumps(data, ensure_ascii=False)[:1500]}")
-            return None
+        return self._conteudo(data)
 
-    def ask_json(self, system, user, max_tokens=220):
+    def ask_json(self, system, user, max_tokens=None):
         if not self.enabled:
             return None
 
@@ -145,15 +176,17 @@ class AIRouter:
                 {"role": "user", "content": str(user)}
             ],
             "temperature": 0,
-            "max_tokens": max_tokens
+            "max_tokens": max_tokens or self.TOKENS_JSON
         })
 
         if not data:
             return None
 
-        try:
-            raw = (data["choices"][0]["message"]["content"] or "").strip()
+        raw = self._conteudo(data)
+        if not raw:
+            return None
 
+        try:
             if raw.startswith("```"):
                 raw = raw.strip("`").strip()
                 if raw.lower().startswith("json"):

@@ -1,3 +1,4 @@
+import gc
 import json
 import subprocess
 import tempfile
@@ -46,11 +47,20 @@ def _ajustar_ganho_do_microfone(ganho_db):
                 IAudioEndpointVolume._iid_, CLSCTX_ALL, None
             )
             volume = cast(interface, POINTER(IAudioEndpointVolume))
-            minimo, maximo, _ = volume.GetVolumeRange()
-            alvo = max(minimo, min(maximo, float(ganho_db)))
-            if abs(volume.GetMasterVolumeLevel() - alvo) > 0.01:
-                volume.SetMasterVolumeLevel(alvo, None)
-                print(f"🎚️ Ganho do microfone ajustado para {alvo:.0f} dB.")
+            try:
+                minimo, maximo, _ = volume.GetVolumeRange()
+                alvo = max(minimo, min(maximo, float(ganho_db)))
+                if abs(volume.GetMasterVolumeLevel() - alvo) > 0.01:
+                    volume.SetMasterVolumeLevel(alvo, None)
+                    print(f"🎚️ Ganho do microfone ajustado para {alvo:.0f} dB.")
+            finally:
+                # Soltar os objetos COM aqui, enquanto o COM ainda está
+                # inicializado. Deixá-los para o coletor faz o Release()
+                # cair depois da finalização do COM, e o __del__ do
+                # comtypes levanta "COM method call without VTable" no
+                # fim do processo -- ruído numa saída que estava limpa.
+                del volume, interface, dispositivo
+                gc.collect()
             return True
     except Exception as e:
         print(f"⚠️ não consegui ajustar o ganho do microfone ({type(e).__name__}: {e}).")
