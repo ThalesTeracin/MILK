@@ -17,3 +17,8 @@
 # Geração de .pptx (apresentações). Puxa lxml.
 # Sem ele, pedidos de PPTX respondem sugerindo DOCX ou PDF.
 python-pptx>=1.0.2
+
+# Ajuste do ganho do microfone pelo perfil de captura (voice/listener.py).
+# Sem ele a MILK ouve com o ganho que o Windows já tem; só perde o ajuste
+# automático entre os perfis "perto" e "longe".
+pycaw

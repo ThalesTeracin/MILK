@@ -9,9 +9,53 @@ import sounddevice as sd
 
 from core.config import config_path
 from core.proc import popen_hidden
-from voice.audio_device import indice_de_entrada
+from voice.audio_device import indice_de_entrada, perfil_de_captura
+from voice.audio_dsp import condicionar
 
 CONFIG = config_path("whisper_local.json")
+
+
+def _ajustar_ganho_do_microfone(ganho_db):
+    """
+    Põe o ganho do endpoint de captura no valor que o perfil pede.
+
+    Nesta máquina o endpoint vinha com +24 dB, o topo da faixa: a fala
+    batia no teto do int16 em 1,5% das amostras e o Whisper devolvia
+    legenda de ruído em vez de palavras. A +18 dB o pico caiu de 32767
+    para 21026 e a mesma frase virou texto.
+
+    Depende do pycaw, que é opcional (requirements-optional.txt). Sem ele
+    a MILK continua ouvindo com o ganho que o Windows já tem: perder o
+    ajuste fino é muito melhor do que não subir.
+    """
+    try:
+        from comtypes import CLSCTX_ALL, POINTER, cast
+        from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+    except Exception:
+        return False
+
+    try:
+        for dispositivo in AudioUtilities.GetAllDevices():
+            nome = dispositivo.FriendlyName or ""
+            if not str(dispositivo.state).endswith("Active"):
+                continue
+            if "Microfone" not in nome and "Microphone" not in nome:
+                continue
+
+            interface = dispositivo._dev.Activate(
+                IAudioEndpointVolume._iid_, CLSCTX_ALL, None
+            )
+            volume = cast(interface, POINTER(IAudioEndpointVolume))
+            minimo, maximo, _ = volume.GetVolumeRange()
+            alvo = max(minimo, min(maximo, float(ganho_db)))
+            if abs(volume.GetMasterVolumeLevel() - alvo) > 0.01:
+                volume.SetMasterVolumeLevel(alvo, None)
+                print(f"🎚️ Ganho do microfone ajustado para {alvo:.0f} dB.")
+            return True
+    except Exception as e:
+        print(f"⚠️ não consegui ajustar o ganho do microfone ({type(e).__name__}: {e}).")
+
+    return False
 
 class NaturalVoiceListener:
     def __init__(self):
@@ -46,45 +90,41 @@ class NaturalVoiceListener:
         self.native_rate = int(float(info.get("default_samplerate", 44100)))
         self.device_name = info.get("name", "Microfone padrão")
 
+        self.perfil = perfil_de_captura()
+        _ajustar_ganho_do_microfone(self.perfil["ganho_db"])
+
         print(f"🎤 Microfone: {self.device_name}")
         print(f"🎤 Taxa nativa: {self.native_rate} Hz")
+        print(f"🎤 Perfil de captura: {self.perfil['nome']}")
         print("🧠 STT: whisper.cpp")
         print("🪟 Whisper: modo invisível forçado")
 
     def calibrate(self, seconds=0):
         print("✅ Whisper pronto.")
 
-    def _resample_to_16k(self, audio):
-        if self.native_rate == 16000:
-            return audio.astype(np.int16)
-
-        x = np.asarray(audio, dtype=np.float32).reshape(-1)
-        if len(x) == 0:
-            return np.array([], dtype=np.int16)
-
-        new_len = max(1, int(len(x) * 16000 / self.native_rate))
-        old_idx = np.arange(len(x), dtype=np.float32)
-        new_idx = np.linspace(0, len(x)-1, new_len, dtype=np.float32)
-        y = np.interp(new_idx, old_idx, x)
-        return np.clip(y, -32768, 32767).astype(np.int16)
-
     # Detecção de fim de fala. Antes a captura gravava um bloco fixo de
     # self.seconds e descartava tudo se o RMS médio ficasse abaixo do
     # limiar: frases mais longas que a janela eram cortadas no meio, e
     # frases curtas gastavam o resto do tempo gravando silêncio.
-    LIMIAR_RMS = 15          # mesmo limiar usado antes, agora por bloco
     BLOCO_SEGUNDOS = 0.1     # granularidade da decisão
-    SILENCIO_PARA_PARAR = 0.8
-    DURACAO_MAXIMA = 15.0    # teto absoluto, evita gravar para sempre
+    BLOCOS_DE_RUIDO = 10     # 1 s de silêncio guardado como referência
 
     def _record(self):
+        # Limiar, paciência com pausas e teto de duração vêm do perfil de
+        # captura: de longe a voz chega mais fraca e as pausas parecem fim
+        # de frase. Ver PERFIS em voice/audio_device.py.
         frames_por_bloco = int(self.native_rate * self.BLOCO_SEGUNDOS)
+        limiar = self.perfil["limiar_rms"]
         blocos_de_silencio_para_parar = int(
-            self.SILENCIO_PARA_PARAR / self.BLOCO_SEGUNDOS
+            self.perfil["silencio_para_parar"] / self.BLOCO_SEGUNDOS
         )
-        blocos_maximos = int(self.DURACAO_MAXIMA / self.BLOCO_SEGUNDOS)
+        blocos_maximos = int(self.perfil["duracao_maxima"] / self.BLOCO_SEGUNDOS)
 
         blocos = []
+        # O silêncio antes da fala deixou de ser jogado fora: ele é a
+        # medida do ruído desta sala, e é com ela que o condicionamento
+        # sabe o que tirar do que veio depois.
+        ruido = []
         comecou_a_falar = False
         blocos_silenciosos = 0
 
@@ -101,7 +141,7 @@ class NaturalVoiceListener:
 
                 bloco = np.asarray(dados).reshape(-1)
                 rms = float(np.sqrt(np.mean(bloco.astype(np.float32) ** 2)))
-                tem_voz = rms >= self.LIMIAR_RMS
+                tem_voz = rms >= limiar
 
                 if tem_voz:
                     comecou_a_falar = True
@@ -110,16 +150,22 @@ class NaturalVoiceListener:
                     blocos_silenciosos += 1
 
                 # Só acumula depois que a fala começou: o silêncio inicial,
-                # enquanto a pessoa ainda não falou, não vira áudio.
+                # enquanto a pessoa ainda não falou, não vira áudio -- mas
+                # vira referência de ruído.
                 if comecou_a_falar:
                     blocos.append(bloco)
                     if blocos_silenciosos >= blocos_de_silencio_para_parar:
                         break
+                else:
+                    ruido.append(bloco)
+                    if len(ruido) > self.BLOCOS_DE_RUIDO:
+                        ruido.pop(0)
 
         if not comecou_a_falar or not blocos:
             return None
 
-        return self._resample_to_16k(np.concatenate(blocos))
+        referencia = np.concatenate(ruido) if ruido else None
+        return condicionar(np.concatenate(blocos), self.native_rate, ruido=referencia)
 
     def _run_whisper_hidden(self, cmd):
         """

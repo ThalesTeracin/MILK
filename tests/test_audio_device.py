@@ -11,7 +11,7 @@ import json
 import pytest
 
 import voice.audio_device as audio_mod
-from voice.audio_device import indice_de_entrada
+from voice.audio_device import indice_de_entrada, perfil_de_captura
 
 
 @pytest.fixture
@@ -206,3 +206,68 @@ def test_enumeracao_que_falha_nao_deixa_o_milk_sem_voz(config, monkeypatch, caps
 
     assert indice_de_entrada() is None
     assert "PortAudio" in capsys.readouterr().out
+
+
+# ------------------------------------------------- perfil de captura
+#
+# Falar de perto e falar do outro lado da sala pedem ajustes opostos. De
+# perto o risco e saturar: o endpoint desta maquina vinha com +24 dB, o
+# topo da faixa, e a fala batia no teto do int16 em 1,5% das amostras --
+# o Whisper devolvia "[GRITOS DE GOL]" no lugar de palavras. De longe o
+# risco e o contrario: o gatilho nao dispara e a frase e cortada antes do
+# fim.
+
+
+def test_perfil_padrao_e_perto(config):
+    config.write_text(json.dumps({"input_name": "x"}), encoding="utf-8")
+
+    assert perfil_de_captura()["nome"] == "perto"
+
+
+def test_sem_arquivo_o_perfil_ainda_e_perto(config):
+    assert perfil_de_captura()["nome"] == "perto"
+
+
+def test_perfil_longe_dispara_com_menos_som(config):
+    config.write_text(json.dumps({"perfil": "longe"}), encoding="utf-8")
+
+    longe = perfil_de_captura()
+    config.write_text(json.dumps({"perfil": "perto"}), encoding="utf-8")
+    perto = perfil_de_captura()
+
+    assert longe["limiar_rms"] < perto["limiar_rms"]
+
+
+def test_perfil_longe_espera_mais_pelo_fim_da_frase(config):
+    """De longe a fala chega mais fraca, e uma pausa curta parece silêncio."""
+    config.write_text(json.dumps({"perfil": "longe"}), encoding="utf-8")
+
+    longe = perfil_de_captura()
+    config.write_text(json.dumps({"perfil": "perto"}), encoding="utf-8")
+    perto = perfil_de_captura()
+
+    assert longe["silencio_para_parar"] > perto["silencio_para_parar"]
+    assert longe["duracao_maxima"] >= perto["duracao_maxima"]
+
+
+def test_perfil_longe_pede_mais_ganho(config):
+    config.write_text(json.dumps({"perfil": "longe"}), encoding="utf-8")
+
+    longe = perfil_de_captura()
+    config.write_text(json.dumps({"perfil": "perto"}), encoding="utf-8")
+    perto = perfil_de_captura()
+
+    assert longe["ganho_db"] > perto["ganho_db"]
+
+
+def test_perfil_desconhecido_avisa_e_cai_no_perto(config, capsys):
+    config.write_text(json.dumps({"perfil": "telepatia"}), encoding="utf-8")
+
+    assert perfil_de_captura()["nome"] == "perto"
+    assert "telepatia" in capsys.readouterr().out
+
+
+def test_arquivo_ilegivel_nao_derruba_o_perfil(config):
+    config.write_text("{isso nao e json", encoding="utf-8")
+
+    assert perfil_de_captura()["nome"] == "perto"

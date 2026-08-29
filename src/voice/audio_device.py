@@ -124,3 +124,67 @@ def indice_de_entrada():
         return None
 
     return valor
+
+
+# ------------------------------------------------- perfil de captura
+#
+# Falar de perto e falar do outro lado da sala pedem ajustes opostos.
+#
+# De perto o risco e saturar. O endpoint desta maquina vinha com +24 dB,
+# o topo da faixa: a fala batia no teto do int16 em 1,5% das amostras e o
+# Whisper devolvia legenda de ruido -- "[GRITOS DE GOL]", "[MUSICA DE
+# FUNDO]" -- em vez de palavras. A +18 dB o pico caiu de 32767 para 21026
+# e a mesma frase virou texto.
+#
+# De longe o risco e o oposto: a voz chega fraca, o gatilho de RMS nao
+# dispara, e as pausas naturais da frase parecem silencio de fim.
+
+PERFIS = {
+    "perto": {
+        "nome": "perto",
+        "limiar_rms": 15,
+        "silencio_para_parar": 0.8,
+        "duracao_maxima": 15.0,
+        "ganho_db": 18.0,
+    },
+    "longe": {
+        "nome": "longe",
+        "limiar_rms": 6,
+        "silencio_para_parar": 1.5,
+        "duracao_maxima": 20.0,
+        "ganho_db": 24.0,
+    },
+}
+
+PERFIL_PADRAO = "perto"
+
+
+def perfil_de_captura():
+    """Devolve o perfil de captura escolhido, sempre um dicionario valido."""
+    caminho = config_path(ARQUIVO)
+    if not caminho.exists():
+        return dict(PERFIS[PERFIL_PADRAO])
+
+    try:
+        cfg = json.loads(caminho.read_text(encoding="utf-8-sig"))
+    except Exception:
+        # O aviso de arquivo ilegivel ja sai em indice_de_entrada(), que
+        # roda no mesmo arranque; repetir so encheria a tela.
+        return dict(PERFIS[PERFIL_PADRAO])
+
+    if not isinstance(cfg, dict):
+        return dict(PERFIS[PERFIL_PADRAO])
+
+    nome = _texto(cfg.get("perfil"))
+    if nome is None:
+        return dict(PERFIS[PERFIL_PADRAO])
+
+    escolhido = PERFIS.get(nome.strip().lower())
+    if escolhido is None:
+        print(
+            f"⚠️ perfil de captura '{nome}' não existe em {ARQUIVO}; "
+            f"usando '{PERFIL_PADRAO}'. Disponíveis: {', '.join(sorted(PERFIS))}."
+        )
+        return dict(PERFIS[PERFIL_PADRAO])
+
+    return dict(escolhido)
