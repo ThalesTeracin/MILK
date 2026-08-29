@@ -1623,8 +1623,20 @@ git commit -m "feat: o cérebro sai da thread do Tk e o avatar não congela mais
 - [ ] `python -m pytest -q` — todos passam
 - [ ] `python Testar_Sistema.py` — `RESULTADO: tudo passou`
 - [ ] `git status --porcelain` vazio
-- [ ] `grep -rn "self.activity\|core.activity" --include=*.py src/ | grep -v __pycache__` não retorna nada — a segunda verdade sumiu
-- [ ] `grep -rn "RISKY" --include=*.py src/ | grep -v __pycache__` não retorna nada — o gate duplicado sumiu
+- [ ] `grep -rnE "self\.activity([^_]|$)|core\.activity([^_]|$)" --include=*.py src/ | grep -v __pycache__` não retorna nada — a segunda verdade sumiu.
+      O `[^_]` é necessário: sem ele o grep casa com as menções legítimas ao
+      módulo `core.activity_state`, que é justamente o dono novo do estado.
+- [ ] `grep -rnE "^\s*RISKY[A-Z_]* *=" --include=*.py src/ | grep -v __pycache__`
+      retorna só `src/mcp/mcp_manager.py` — o gate duplicado do router sumiu.
+      A busca é pela definição, não pela palavra: a docstring do
+      `advanced_router` cita `RISKY` de propósito, para registrar o que saiu.
+      O `RISKY_WORDS` do `mcp_manager` **fica** e não é duplicação: os nomes
+      de tool de um servidor MCP são strings arbitrárias de terceiros, fora
+      do vocabulário fechado de `config/permission_profiles.json`, e ali a
+      heurística de substring é o que garante o padrão seguro — tool
+      desconhecida cai em confirmação em vez de executar direto.
+- [ ] `grep -n "self.permissions.check" src/skills/advanced_router.py` retorna
+      a linha — o router decide pelo `PermissionManager`, não por conjunto próprio
 - [ ] `python -c "import sys; sys.path.insert(0,'src'); from core.orchestrator import MilkCore; MilkCore().handle('milk, qual o status do git')"` fala a branch
 - [ ] As duas verificações manuais da Task 6, passo 8, registradas com o que
       foi observado
