@@ -124,8 +124,22 @@ minhas. Nada foi enviado a remoto (o repositório não tem `origin`).
    então isto só muda se você quiser.
 7. **Apagar a branch `fase-32-backup-andaimes`** quando estiver claro
    que não é mais necessária.
-8. **Opcional:** `OPENROUTER_API_KEY` e `NVIDIA_API_KEY` seguem vazias.
-   A cadeia já tem duas reservas de pé; isto é folga extra.
+8. **Campos de chave deixados em aberto, de propósito.**
+   `OPENROUTER_API_KEY` e `NVIDIA_API_KEY` estão vazias e continuam no
+   `AI_PROVIDER_ORDER`: um provedor sem chave é pulado em silêncio, e
+   basta colar a chave para ele entrar na cadeia, sem tocar em código.
+   O usuário não tem mais conta OpenRouter; a NVIDIA fica para 31/08.
+9. **Investigar usar as assinaturas que o usuário já paga, em vez de
+   API avulsa.** Restrição declarada em 30/08: *não* quer pagar nenhuma
+   API por fora. Ele tem conta do Claude Code e do ChatGPT, e quer a
+   MILK conectada a elas.
+   Ponto de partida (a confirmar, nada verificado ainda): as duas
+   assinaturas são acessíveis por linha de comando -- `claude` em modo
+   headless e o Codex CLI -- e não por endpoint HTTP OpenAI-compatible,
+   que é o único formato que o `AIRouter` fala hoje. Dois caminhos a
+   avaliar: (a) o próprio 9Router expor essas contas como provedor, o
+   que evitaria código novo; (b) um provedor de tipo "CLI" no router.
+   Verificar (a) primeiro -- é o que não custa manutenção.
 
 ### Já conferido para o passo 1
 
