@@ -20,7 +20,13 @@ key=getpass("API Key (não aparece na tela): ").strip()
 existing["NINEROUTER_BASE_URL"]=base
 existing["NINEROUTER_MODEL"]=model
 existing["NINEROUTER_API_KEY"]=key
-existing["AI_PROVIDER_ORDER"]="9router_custom"
+
+# Este script troca o cérebro PRINCIPAL, não desliga as reservas: antes
+# ele gravava AI_PROVIDER_ORDER="9router_custom" e apagava a cadeia
+# inteira, deixando a MILK muda sempre que este gateway caísse.
+ordem=[p.strip() for p in existing.get("AI_PROVIDER_ORDER","").split(",") if p.strip()]
+reservas=[p for p in ordem if p!="9router_custom"]
+existing["AI_PROVIDER_ORDER"]=",".join(["9router_custom"]+reservas)
 
 env.write_text(
     "\n".join(f"{k}={v}" for k,v in existing.items())+"\n",

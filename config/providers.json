@@ -1,8 +1,42 @@
 {
+  "_note": "Catálogo de gateways OpenAI-compatible lido por src/ai/router.py. A ordem deste arquivo é a ordem padrão da cadeia quando AI_PROVIDER_ORDER está vazio. Cada campo *_env permite ao .env sobrepor o valor versionado, para que git pull não desfaça a configuração desta máquina. Provedor sem base_url, sem model ou (quando requires_key) sem chave fica fora da cadeia em silêncio.",
+
+  "9router_custom": {
+    "label": "9Router / Custom",
+    "base_url": "http://localhost:20128/v1",
+    "model": "",
+    "base_url_env": "NINEROUTER_BASE_URL",
+    "model_env": "NINEROUTER_MODEL",
+    "api_key_env": "NINEROUTER_API_KEY",
+    "requires_key": true
+  },
+  "omniroute": {
+    "label": "OmniRoute",
+    "base_url": "http://localhost:20128/v1",
+    "model": "",
+    "base_url_env": "OMNIROUTE_BASE_URL",
+    "model_env": "OMNIROUTE_MODEL",
+    "api_key_env": "OMNIROUTE_API_KEY",
+    "requires_key": true,
+    "_note": "Gateway local, porta padrão 20128 -- a mesma do 9Router. Os dois não sobem juntos sem trocar a porta de um deles pelo OMNIROUTE_BASE_URL. O modelo usa prefixo de provedor (ex.: gh/gpt-5.1-codex); veja GET /v1/models no painel."
+  },
+  "freellmapi": {
+    "label": "FreeLLMAPI",
+    "base_url": "http://localhost:3001/v1",
+    "model": "",
+    "base_url_env": "FREELLMAPI_BASE_URL",
+    "model_env": "FREELLMAPI_MODEL",
+    "api_key_env": "FREELLMAPI_API_KEY",
+    "requires_key": true,
+    "_note": "Gateway local que empilha camadas gratuitas de vários provedores, porta padrão 3001. É a reserva de última hora: serve quando as contas pagas estão indisponíveis. Consulte GET /v1/models para o nome do modelo."
+  },
+
   "openrouter_free": {
     "label": "OpenRouter Free",
     "base_url": "https://openrouter.ai/api/v1",
     "model": "openrouter/free",
+    "base_url_env": "OPENROUTER_BASE_URL",
+    "model_env": "OPENROUTER_MODEL",
     "api_key_env": "OPENROUTER_API_KEY",
     "requires_key": true
   },
@@ -10,6 +44,8 @@
     "label": "Groq",
     "base_url": "https://api.groq.com/openai/v1",
     "model": "openai/gpt-oss-20b",
+    "base_url_env": "GROQ_BASE_URL",
+    "model_env": "GROQ_MODEL",
     "api_key_env": "GROQ_API_KEY",
     "requires_key": true
   },
@@ -17,6 +53,8 @@
     "label": "Google Gemini",
     "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
     "model": "gemini-2.5-flash",
+    "base_url_env": "GEMINI_BASE_URL",
+    "model_env": "GEMINI_MODEL",
     "api_key_env": "GEMINI_API_KEY",
     "requires_key": true
   },
@@ -24,14 +62,9 @@
     "label": "NVIDIA NIM",
     "base_url": "https://integrate.api.nvidia.com/v1",
     "model": "meta/llama-3.1-70b-instruct",
+    "base_url_env": "NVIDIA_BASE_URL",
+    "model_env": "NVIDIA_MODEL",
     "api_key_env": "NVIDIA_API_KEY",
-    "requires_key": true
-  },
-  "9router_custom": {
-    "label": "9Router / Custom",
-    "base_url": "",
-    "model": "",
-    "api_key_env": "NINEROUTER_API_KEY",
     "requires_key": true
   }
 }

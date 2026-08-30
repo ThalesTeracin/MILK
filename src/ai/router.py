@@ -4,40 +4,168 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
+from core.config import config_path
+
 load_dotenv()
 
 LOG = Path("logs/ai_router.log")
 LOG.parent.mkdir(parents=True, exist_ok=True)
 
+
+class Provedor:
+    """
+    Um gateway OpenAI-compatible ja resolvido: o que estava em
+    config/providers.json depois de o .env sobrepor endereco, modelo e
+    chave.
+    """
+
+    def __init__(self, ident, label, base_url, model, api_key):
+        self.id = ident
+        self.label = label
+        self.base_url = base_url.rstrip("/")
+        self.model = model
+        self.api_key = api_key
+
+    def __repr__(self):
+        return f"<Provedor {self.id} {self.model}>"
+
+
 class AIRouter:
     """
-    Roteador direto para 9Router local.
-    Evita ambiguidades do SDK OpenAI e mostra o HTTP real.
+    Roteador para gateways OpenAI-compatible, em cadeia.
+
+    A ordem vem de AI_PROVIDER_ORDER; os enderecos, de
+    config/providers.json, com o .env podendo sobrepor cada campo. O
+    primeiro provedor configurado responde; se ele estiver fora do ar ou
+    devolver erro HTTP, a vez passa para o proximo.
+
+    Ate a fase 33 esta classe falava com um gateway so, lido direto de
+    NINEROUTER_*: com o 9Router desligado a MILK ficava muda, sem ter
+    para onde cair. AI_PROVIDER_ORDER e providers.json ja existiam no
+    .env e no repositorio, mas nenhum codigo em execucao os lia.
+
+    A queda para o proximo provedor acontece so no transporte -- conexao
+    recusada, timeout, HTTP diferente de 200. Resposta 200 com conteudo
+    vazio nao troca de provedor: isso e orcamento de tokens curto, e
+    repetir noutro gateway daria o mesmo resultado, gastando o dobro.
     """
 
     def __init__(self):
-        self.base_url = os.getenv("NINEROUTER_BASE_URL", "").strip().rstrip("/")
-        self.model = os.getenv("NINEROUTER_MODEL", "").strip()
-        self.api_key = os.getenv("NINEROUTER_API_KEY", "").strip()
         self.timeout = float(os.getenv("AI_TIMEOUT_SECONDS", "45"))
         self.last_error = None
+        self.provedores = self._carregar_provedores()
+
+    # ------------------------------------------------------------------
+    # Montagem da cadeia
+    # ------------------------------------------------------------------
+
+    def _carregar_provedores(self):
+        catalogo = self._catalogo()
+
+        ordem = [
+            item.strip()
+            for item in os.getenv("AI_PROVIDER_ORDER", "").split(",")
+            if item.strip()
+        ]
+        # Sem ordem declarada vale a ordem do arquivo, para que quem
+        # nunca rodou o configurador ainda tenha uma cadeia. Chaves
+        # iniciadas por "_" sao comentario (a convencao ja usada em
+        # config/settings.json), nao provedor.
+        if not ordem:
+            ordem = [ident for ident in catalogo if not ident.startswith("_")]
+
+        provedores = []
+        for ident in ordem:
+            cfg = catalogo.get(ident)
+            if not isinstance(cfg, dict):
+                self._log(
+                    f"provedor '{ident}' está em AI_PROVIDER_ORDER mas não "
+                    "existe em providers.json -- ignorado"
+                )
+                continue
+
+            provedor = self._resolver(ident, cfg)
+            if provedor is not None:
+                provedores.append(provedor)
+
+        return provedores
+
+    def _catalogo(self):
+        caminho = config_path("providers.json")
+        try:
+            # utf-8-sig: o arquivo pode ter sido salvo por editor do
+            # Windows com BOM, e json.loads engasga com ele.
+            return json.loads(caminho.read_text(encoding="utf-8-sig"))
+        except FileNotFoundError:
+            self._log(f"providers.json não encontrado em {caminho}")
+            return {}
+        except Exception as e:
+            self._log(f"providers.json inválido: {type(e).__name__}: {e}")
+            return {}
+
+    def _resolver(self, ident, cfg):
+        """Devolve o Provedor pronto, ou None quando falta configuração."""
+        base_url = self._do_env(cfg.get("base_url_env")) or (cfg.get("base_url") or "").strip()
+        model = self._do_env(cfg.get("model_env")) or (cfg.get("model") or "").strip()
+        api_key = self._do_env(cfg.get("api_key_env"))
+
+        if not base_url or not model:
+            return None
+        if cfg.get("requires_key", True) and not api_key:
+            return None
+
+        return Provedor(ident, cfg.get("label", ident), base_url, model, api_key)
+
+    @staticmethod
+    def _do_env(nome):
+        if not nome:
+            return ""
+        return os.getenv(nome, "").strip()
+
+    # ------------------------------------------------------------------
+    # Estado
+    # ------------------------------------------------------------------
+
+    @property
+    def ativo(self):
+        """O provedor que responde primeiro, ou None."""
+        return self.provedores[0] if self.provedores else None
 
     @property
     def enabled(self):
-        return bool(self.base_url and self.model and self.api_key)
+        return bool(self.provedores)
+
+    @property
+    def base_url(self):
+        return self.ativo.base_url if self.ativo else ""
+
+    @property
+    def model(self):
+        return self.ativo.model if self.ativo else ""
+
+    @property
+    def api_key(self):
+        return self.ativo.api_key if self.ativo else ""
 
     def status(self):
-        if not self.enabled:
+        if not self.provedores:
             return "não configurado"
-        return f"9Router Local [{self.model}]"
 
-    def _headers(self):
-        # OpenAI-compatible auth expected by 9Router
-        return {
-            "Authorization": f"Bearer {self.api_key}",
+        texto = f"{self.ativo.label} [{self.ativo.model}]"
+        reservas = len(self.provedores) - 1
+        if reservas:
+            texto += f" (+{reservas} de reserva)"
+        return texto
+
+    def _headers(self, provedor):
+        # Auth OpenAI-compatible, aceita por 9Router, OmniRoute e FreeLLMAPI
+        cabecalhos = {
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
+        if provedor.api_key:
+            cabecalhos["Authorization"] = f"Bearer {provedor.api_key}"
+        return cabecalhos
 
     def _log(self, msg):
         self.last_error = msg
@@ -45,28 +173,56 @@ class AIRouter:
             f.write(msg + "\n")
         print("⚠️ IA:", msg)
 
+    # ------------------------------------------------------------------
+    # Transporte
+    # ------------------------------------------------------------------
+
     def _post(self, payload):
-        url = f"{self.base_url}/chat/completions"
+        if not self.provedores:
+            self._log("nenhum provedor configurado no .env")
+            return None
+
+        falhas = []
+        for provedor in self.provedores:
+            # Cada gateway tem o proprio nome de modelo; o payload chega
+            # com o do ativo e precisa ser reescrito a cada tentativa.
+            corpo = dict(payload)
+            corpo["model"] = provedor.model
+
+            data = self._tentar(provedor, corpo)
+            if data is not None:
+                return data
+
+            falhas.append(f"{provedor.label} ({self.last_error})")
+
+        self._log("nenhum provedor da cadeia respondeu: " + " | ".join(falhas))
+        return None
+
+    def _tentar(self, provedor, payload):
+        url = f"{provedor.base_url}/chat/completions"
         try:
             r = requests.post(
                 url,
-                headers=self._headers(),
+                headers=self._headers(provedor),
                 json=payload,
                 timeout=self.timeout
             )
         except Exception as e:
-            self._log(f"Falha de conexão: {type(e).__name__}: {e}")
+            self._log(f"{provedor.label}: falha de conexão: {type(e).__name__}: {e}")
             return None
 
         if r.status_code != 200:
             body = (r.text or "")[:3000]
-            self._log(f"HTTP {r.status_code}: {body}")
+            self._log(f"{provedor.label}: HTTP {r.status_code}: {body}")
             return None
 
         try:
             return r.json()
         except Exception as e:
-            self._log(f"Resposta não-JSON: {e} | body={(r.text or '')[:2000]}")
+            self._log(
+                f"{provedor.label}: resposta não-JSON: {e} | "
+                f"body={(r.text or '')[:2000]}"
+            )
             return None
 
     # Modelos de raciocinio (o glm-5.3-flash servido pelo 9Router e um)

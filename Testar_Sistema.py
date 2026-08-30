@@ -241,20 +241,25 @@ else:
             aviso("provedor '" + pid + "' esta em AI_PROVIDER_ORDER mas nao em providers.json")
             continue
         var = cfg.get("api_key_env", "")
-        if chaves.get(var):
-            ok(cfg["label"] + ": chave presente (" + var + ")")
-            com_chave.append(pid)
-        else:
+        if not chaves.get(var):
             aviso(cfg["label"] + ": sem chave (" + var + " vazio) -- provedor sera pulado")
+            continue
+
+        ok(cfg["label"] + ": chave presente (" + var + ")")
+        com_chave.append(pid)
+
+        # Endereco e modelo efetivos: o .env sobrepoe o providers.json,
+        # como o src/ai/router.py faz. Conferir so o .env dava falha
+        # falsa em provedor cujo endereco padrao ja vem do arquivo.
+        url = chaves.get(cfg.get("base_url_env", ""), "") or cfg.get("base_url", "")
+        modelo = chaves.get(cfg.get("model_env", ""), "") or cfg.get("model", "")
+        if not url:
+            falha(cfg["label"] + " tem chave mas esta sem base_url")
+        if not modelo:
+            falha(cfg["label"] + " tem chave mas esta sem modelo")
 
     if not com_chave:
         falha("nenhum provedor de IA tem chave configurada -- o chat nao vai responder")
-
-    if "9router_custom" in com_chave:
-        if not chaves.get("NINEROUTER_BASE_URL"):
-            falha("9router_custom tem chave mas NINEROUTER_BASE_URL esta vazio")
-        if not chaves.get("NINEROUTER_MODEL"):
-            falha("9router_custom tem chave mas NINEROUTER_MODEL esta vazio")
 
 
 # --------------------------------------------------------------- 6b
