@@ -48,7 +48,11 @@ for provedor in router.provedores:
         no_ar += 1
         print(f"[no ar]  {provedor.label}: {resultado['reply'][:60]}")
     else:
-        print(f"[fora]   {provedor.label}: {resultado['error']}")
+        # test() so devolve "error" quando a chamada falhou. Respondendo
+        # 200 com conteudo vazio -- tipico de modelo de raciocinio que
+        # gastou o orcamento pensando -- nao existe chave "error".
+        motivo = resultado.get("error") or "respondeu vazio (veja logs/ai_router.log)"
+        print(f"[fora]   {provedor.label}: {motivo}")
 
 print()
 if no_ar:
