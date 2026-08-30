@@ -96,7 +96,43 @@ As 27 renomeações para `archive/`, anteriores a este trabalho,
 continuam **em staging e não commitadas** -- de propósito, não são
 minhas. Nada foi enviado a remoto (o repositório não tem `origin`).
 
-## Próximo passo exato
+## Pendências numeradas (parado em 2026-08-30, retomar em 31/08)
 
-Rotacionar as duas chaves expostas e rodar `python Testar_Provedores.py`
-para confirmar que as novas respondem.
+1. **Subir o projeto para o GitHub.** É a tarefa combinada para amanhã.
+   O repositório não tem `origin`. O `gh` está instalado (2.97.0) e
+   autenticado como `ThalesTeracin`. Antes de criar o repositório:
+   decidir **público ou privado**.
+2. **Revisar `data/session_memory.json` antes de publicar.** São 467
+   bytes com a chave `history` -- comandos reais já ditos à MILK.
+   Junto dele vão `data/profiles/principal.json` (218 bytes) e
+   `data/test_recovery.txt`. Em repositório privado é indiferente; em
+   público, decidir se saem do versionamento.
+3. **Rotacionar as chaves de Groq e Gemini** (foram digitadas no chat).
+   Gerar novas, revogar as antigas e gravar com
+   `python Configurar_Provedores.py`, que usa `getpass`.
+4. **Decidir o destino das 27 renomeações para `archive/`** que estão em
+   staging desde antes deste trabalho: commitar ou desfazer.
+5. **Fechar as pendências da fase 33** listadas em
+   `.superpowers/sdd/2026-08-28-fase-33-presence-avatar-skills/progress.md`:
+   a revisão final da branch foi despachada e nunca voltou, duas
+   conferências visuais são suas e de mais ninguém, e o documento de
+   plano ainda ensina dois blocos de código que decisões posteriores
+   substituíram.
+6. **Tarefa agendada `MILK_Assistant` nunca foi registrada** -- a MILK
+   não sobe sozinha no logon. `installer/REGISTRAR_TAREFA_AGENDADA.ps1`
+   existe e nunca rodou; você decidiu não registrar nada no Windows,
+   então isto só muda se você quiser.
+7. **Apagar a branch `fase-32-backup-andaimes`** quando estiver claro
+   que não é mais necessária.
+8. **Opcional:** `OPENROUTER_API_KEY` e `NVIDIA_API_KEY` seguem vazias.
+   A cadeia já tem duas reservas de pé; isto é folga extra.
+
+### Já conferido para o passo 1
+
+- 265 arquivos rastreados, 6,7 MB no total -- tamanho tranquilo para
+  push. Os três maiores são PNGs do avatar, 1,9 MB cada.
+- Varredura de segredos no histórico inteiro (`git log -p --all`):
+  nenhuma chave encontrada. O único arquivo de ambiente que já foi
+  versionado é o `.env.example`.
+- `logs/`, `browser_profile/`, `output/`, `third_party/` e os caches
+  estão no `.gitignore`.
