@@ -133,13 +133,15 @@ minhas. Nada foi enviado a remoto (o repositório não tem `origin`).
    API avulsa.** Restrição declarada em 30/08: *não* quer pagar nenhuma
    API por fora. Ele tem conta do Claude Code e do ChatGPT, e quer a
    MILK conectada a elas.
-   Ponto de partida (a confirmar, nada verificado ainda): as duas
-   assinaturas são acessíveis por linha de comando -- `claude` em modo
-   headless e o Codex CLI -- e não por endpoint HTTP OpenAI-compatible,
-   que é o único formato que o `AIRouter` fala hoje. Dois caminhos a
-   avaliar: (a) o próprio 9Router expor essas contas como provedor, o
-   que evitaria código novo; (b) um provedor de tipo "CLI" no router.
-   Verificar (a) primeiro -- é o que não custa manutenção.
+   **O usuário informou em 30/08 que o 9Router já tem todos esses
+   provedores**, incluindo as contas de assinatura. Se confirmar, não há
+   código novo a escrever: basta escolher o modelo certo no painel do
+   9Router e apontar `NINEROUTER_MODEL`. Confirmar no painel antes de
+   cogitar qualquer provedor de tipo "CLI" no router.
+   A única coisa que o 9Router não cobre é o **FreeLLMAPI**, que o
+   usuário quer manter como opção -- por isso a entrada `freellmapi`
+   segue em `config/providers.json` (porta 3001), pronta para receber
+   chave e modelo, mesmo com o clone do repositório já apagado.
 
 ### Já conferido para o passo 1
 
