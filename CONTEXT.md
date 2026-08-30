@@ -83,8 +83,18 @@ Groq e registrou a falha do primeiro no log.
   `python Configurar_Provedores.py`, que usa `getpass` e não ecoa.
 - `OPENROUTER_API_KEY` e `NVIDIA_API_KEY` continuam vazias -- opcional,
   a cadeia já tem duas reservas.
-- Nada commitado. Há renomeações para `archive/` em staging, de antes
-  deste trabalho.
+
+## Git
+
+Commitado e mesclado em 2026-08-30. `master` foi levado a `fase-33` por
+fast-forward (`git branch -f master fase-33`, sem commit de merge,
+mantendo o histórico linear como nas fases anteriores), e a cadeia
+entrou por cima: `76df924` (cadeia) e `abc9625` (correção do
+Testar_Provedores). HEAD em `master`, 238 testes passando.
+
+As 27 renomeações para `archive/`, anteriores a este trabalho,
+continuam **em staging e não commitadas** -- de propósito, não são
+minhas. Nada foi enviado a remoto (o repositório não tem `origin`).
 
 ## Próximo passo exato
 
