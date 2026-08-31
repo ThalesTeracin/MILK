@@ -452,7 +452,13 @@ def test_milkcore_nao_tem_mais_o_atributo_activity(core):
     """
     O ponto da fase: uma verdade so. Um atributo sobrevivente viraria a
     segunda, e o overlay leria o valor errado sem ninguem perceber.
+
+    Ruling da varredura: chama say() antes de assertar. Sem isso o teste e
+    decorativo -- passa antes e depois da mudanca, porque o atributo so
+    nasce quando say() escreve nele.
     """
+    core.say("ola")
+
     assert not hasattr(core, "activity")
 ```
 
@@ -901,8 +907,15 @@ def test_skill_que_levanta_excecao_vira_frase(router, monkeypatch):
 
     saida = router.execute({"type": "builtin", "skill": "git_status", "args": {}})
 
+    # Ruling da varredura: a forma anterior --
+    #   assert "git_status" in saida["dados"].get("erro", "") or saida["fala"]
+    # -- e verdadeira por precedencia de operador e aprovaria uma
+    # implementacao que jogasse a excecao fora. As assercoes abaixo sao
+    # estritamente mais fortes.
     assert saida["ok"] is False
-    assert "git_status" in saida["dados"].get("erro", "") or saida["fala"]
+    assert saida["fala"]
+    assert "RuntimeError" in saida["dados"]["erro"]
+    assert "git nao esta no PATH" in saida["dados"]["erro"]
 
 
 def test_plano_vazio(router):
