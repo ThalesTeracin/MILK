@@ -2,9 +2,10 @@
 
 ## Objetivo atual
 
-Projeto publicado no GitHub em 2026-08-31. O próximo passo é rotacionar
-as chaves de Groq e Gemini, que devem ser tratadas como expostas, e
-depois fechar as pendências da fase 33.
+Projeto publicado no GitHub e revisão final da fase 33 concluída, ambos
+em 2026-08-31. O próximo passo é rotacionar as chaves de Groq e Gemini,
+que devem ser tratadas como expostas. Antes disso, duas conferências
+visuais da fase 33 dependem só de você (ver pendência 1).
 
 ## Progresso concluído (2026-08-30, branch `fase-33`)
 
@@ -98,6 +99,11 @@ fase 33) e a saída de `data/session_memory.json` do versionamento.
 Conferido no remoto: o `.env` real não subiu (só o `.env.example`) e o
 `data/session_memory.json` também não.
 
+Em 31/08, depois do push, entraram as correções da revisão final da fase
+33: `5d7cc9a` (o "pensando" passa a valer enquanto o cérebro trabalha),
+`321f622` (estado de runtime publicado por troca de nome) e `a17bed7`
+(plano para de ensinar os blocos substituídos). 242 testes passando.
+
 ## Pendências numeradas (atualizado em 2026-08-31)
 
 Concluídos em 31/08: publicação no GitHub (era 1), a revisão dos
@@ -108,12 +114,18 @@ renomeações para `archive/` (era 4). Ver a seção Git acima.
    Gerar novas em `console.groq.com/keys` e `aistudio.google.com/apikey`,
    revogar as antigas e gravar com `python Configurar_Provedores.py`,
    que usa `getpass` e não ecoa. É o próximo passo.
-2. **Fechar as pendências da fase 33** listadas em
-   `.superpowers/sdd/2026-08-28-fase-33-presence-avatar-skills/progress.md`:
-   a revisão final da branch foi despachada e nunca voltou, duas
-   conferências visuais são suas e de mais ninguém, e o documento de
-   plano ainda ensina dois blocos de código que decisões posteriores
-   substituíram.
+2. **Duas conferências visuais da fase 33 — só você pode fazer.**
+   (a) `python src/main.py` com o 9Router no ar, dizer "milk", fazer uma
+   pergunta que puxe a IA e conferir se o avatar continua se mexendo
+   durante a espera **e se o rótulo diz "pensando…"**. Até 31/08 ele dizia
+   "ouvindo…" durante toda a resposta; o defeito foi corrigido e nunca foi
+   visto na tela por ninguém.
+   (b) fechar a MILK, abrir `INICIAR_MILK_MINI_OVERLAY.bat` e conferir se
+   ele mostra "MILK · DESLIGADA" em até 5 segundos.
+   O resto da fase 33 está fechado: a revisão final foi feita em 31/08,
+   três achados corrigidos e três parked mantidos com o motivo revisto.
+   Detalhe em
+   `.superpowers/sdd/2026-08-28-fase-33-presence-avatar-skills/progress.md`.
 3. **Tarefa agendada `MILK_Assistant` nunca foi registrada** -- a MILK
    não sobe sozinha no logon. `installer/REGISTRAR_TAREFA_AGENDADA.ps1`
    existe e nunca rodou; você decidiu não registrar nada no Windows,
