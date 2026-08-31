@@ -2,9 +2,9 @@
 
 ## Objetivo atual
 
-Deixar a MILK com uma cadeia de cérebros em vez de um só, para que ela
-continue respondendo quando o gateway principal estiver fora do ar ou
-uma assinatura estiver indisponível.
+Projeto publicado no GitHub em 2026-08-31. O próximo passo é rotacionar
+as chaves de Groq e Gemini, que devem ser tratadas como expostas, e
+depois fechar as pendências da fase 33.
 
 ## Progresso concluído (2026-08-30, branch `fase-33`)
 
@@ -86,50 +86,46 @@ Groq e registrou a falha do primeiro no log.
 
 ## Git
 
-Commitado e mesclado em 2026-08-30. `master` foi levado a `fase-33` por
-fast-forward (`git branch -f master fase-33`, sem commit de merge,
-mantendo o histórico linear como nas fases anteriores), e a cadeia
-entrou por cima: `76df924` (cadeia) e `abc9625` (correção do
-Testar_Provedores). HEAD em `master`, 238 testes passando.
+`origin` criado em 2026-08-31: **https://github.com/ThalesTeracin/MILK**,
+repositório **privado**, branch padrão `master`, 264 arquivos enviados.
+O updater da fase 32 finalmente tem de onde puxar.
 
-As 27 renomeações para `archive/`, anteriores a este trabalho,
-continuam **em staging e não commitadas** -- de propósito, não são
-minhas. Nada foi enviado a remoto (o repositório não tem `origin`).
+Histórico linear preservado. Dois commits novos entraram antes do push:
+as 27 renomeações para `archive/` (que estavam em staging desde antes da
+fase 33) e a saída de `data/session_memory.json` do versionamento.
+Árvore limpa, 238 testes passando depois das duas mudanças.
 
-## Pendências numeradas (parado em 2026-08-30, retomar em 31/08)
+Conferido no remoto: o `.env` real não subiu (só o `.env.example`) e o
+`data/session_memory.json` também não.
 
-1. **Subir o projeto para o GitHub.** É a tarefa combinada para amanhã.
-   O repositório não tem `origin`. O `gh` está instalado (2.97.0) e
-   autenticado como `ThalesTeracin`. Antes de criar o repositório:
-   decidir **público ou privado**.
-2. **Revisar `data/session_memory.json` antes de publicar.** São 467
-   bytes com a chave `history` -- comandos reais já ditos à MILK.
-   Junto dele vão `data/profiles/principal.json` (218 bytes) e
-   `data/test_recovery.txt`. Em repositório privado é indiferente; em
-   público, decidir se saem do versionamento.
-3. **Rotacionar as chaves de Groq e Gemini** (foram digitadas no chat).
-   Gerar novas, revogar as antigas e gravar com
-   `python Configurar_Provedores.py`, que usa `getpass`.
-4. **Decidir o destino das 27 renomeações para `archive/`** que estão em
-   staging desde antes deste trabalho: commitar ou desfazer.
-5. **Fechar as pendências da fase 33** listadas em
+## Pendências numeradas (atualizado em 2026-08-31)
+
+Concluídos em 31/08: publicação no GitHub (era 1), a revisão dos
+arquivos de `data/` antes de publicar (era 2) e o destino das 27
+renomeações para `archive/` (era 4). Ver a seção Git acima.
+
+1. **Rotacionar as chaves de Groq e Gemini** (foram digitadas no chat).
+   Gerar novas em `console.groq.com/keys` e `aistudio.google.com/apikey`,
+   revogar as antigas e gravar com `python Configurar_Provedores.py`,
+   que usa `getpass` e não ecoa. É o próximo passo.
+2. **Fechar as pendências da fase 33** listadas em
    `.superpowers/sdd/2026-08-28-fase-33-presence-avatar-skills/progress.md`:
    a revisão final da branch foi despachada e nunca voltou, duas
    conferências visuais são suas e de mais ninguém, e o documento de
    plano ainda ensina dois blocos de código que decisões posteriores
    substituíram.
-6. **Tarefa agendada `MILK_Assistant` nunca foi registrada** -- a MILK
+3. **Tarefa agendada `MILK_Assistant` nunca foi registrada** -- a MILK
    não sobe sozinha no logon. `installer/REGISTRAR_TAREFA_AGENDADA.ps1`
    existe e nunca rodou; você decidiu não registrar nada no Windows,
    então isto só muda se você quiser.
-7. **Apagar a branch `fase-32-backup-andaimes`** quando estiver claro
+4. **Apagar a branch `fase-32-backup-andaimes`** quando estiver claro
    que não é mais necessária.
-8. **Campos de chave deixados em aberto, de propósito.**
+5. **Campos de chave deixados em aberto, de propósito.**
    `OPENROUTER_API_KEY` e `NVIDIA_API_KEY` estão vazias e continuam no
    `AI_PROVIDER_ORDER`: um provedor sem chave é pulado em silêncio, e
    basta colar a chave para ele entrar na cadeia, sem tocar em código.
-   O usuário não tem mais conta OpenRouter; a NVIDIA fica para 31/08.
-9. **Investigar usar as assinaturas que o usuário já paga, em vez de
+   O usuário não tem mais conta OpenRouter.
+6. **Investigar usar as assinaturas que o usuário já paga, em vez de
    API avulsa.** Restrição declarada em 30/08: *não* quer pagar nenhuma
    API por fora. Ele tem conta do Claude Code e do ChatGPT, e quer a
    MILK conectada a elas.
@@ -142,13 +138,3 @@ minhas. Nada foi enviado a remoto (o repositório não tem `origin`).
    usuário quer manter como opção -- por isso a entrada `freellmapi`
    segue em `config/providers.json` (porta 3001), pronta para receber
    chave e modelo, mesmo com o clone do repositório já apagado.
-
-### Já conferido para o passo 1
-
-- 265 arquivos rastreados, 6,7 MB no total -- tamanho tranquilo para
-  push. Os três maiores são PNGs do avatar, 1,9 MB cada.
-- Varredura de segredos no histórico inteiro (`git log -p --all`):
-  nenhuma chave encontrada. O único arquivo de ambiente que já foi
-  versionado é o `.env.example`.
-- `logs/`, `browser_profile/`, `output/`, `third_party/` e os caches
-  estão no `.gitignore`.
