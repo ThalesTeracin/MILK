@@ -172,7 +172,6 @@ def test_animate_reagenda_mesmo_falhando(app, registros, monkeypatch):
     # Assinatura com *a: desde a fase 33 o render recebe brilho, escala
     # e deslocamento, não só o brilho.
     monkeypatch.setattr(app, "_render_avatar", lambda *a: 1 / 0)
-    app.core = type("CoreFalso", (), {"activity": "thinking"})()
 
     app._animate()
 
@@ -261,3 +260,60 @@ def test_fade_in_tenta_de_novo_apos_dormir_e_acordar(app, monkeypatch):
     app._idle_watch()  # acordou nesta chamada: nova tentativa
 
     assert len(tentativas) == 2
+
+
+# ------------------------------- "pensando" chega até a tela (revisão final)
+
+
+def test_trabalho_passo_marca_pensando_durante_o_cerebro(app):
+    """
+    O estado "thinking" tem de valer ENQUANTO o cérebro trabalha.
+
+    Antes desta correção só o laço de escuta marcava "thinking", uma linha
+    antes de enfileirar, e voltava ao topo marcando "listening" logo em
+    seguida. A janela durava microssegundos e o avatar, que desenha a cada
+    40 ms, nunca a via: mostrava "ouvindo…" enquanto a IA respondia. O
+    congelamento que a Task 6 tirou escondia isso -- a tela parada ainda
+    exibia o rótulo antigo.
+    """
+    visto = []
+
+    class CoreFalso:
+        state = "ready"
+
+        def handle(self, texto):
+            visto.append(estado_mod.atividade())
+
+    app.core = CoreFalso()
+    app.events.put("milk, o que e uma VPC")
+
+    app._trabalho_passo(timeout=0)
+
+    assert visto == ["thinking"]
+
+
+def test_escuta_nao_apaga_o_pensando_do_trabalho(app):
+    """
+    O laço de escuta volta a "listening" no topo de cada volta. Se ele
+    fizer isso enquanto o cérebro pensa, apaga o estado de quem está
+    trabalhando -- as duas threads escrevem no mesmo dono único.
+    """
+    estado_mod.definir_atividade("thinking")
+    observado = []
+
+    class VozFalsa:
+        def __init__(self):
+            self.n = 0
+
+        def listen(self):
+            self.n += 1
+            observado.append(estado_mod.atividade())
+            app.running = False
+            return None
+
+    app.running = True
+    app.core = type("CoreFalso", (), {"voice": VozFalsa()})()
+
+    UnifiedApp._listen_loop(app)
+
+    assert observado == ["thinking"]

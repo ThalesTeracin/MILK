@@ -293,7 +293,14 @@ class UnifiedApp:
         """
         _log("Loop de escuta unificado iniciado.")
         while self.running:
-            definir_atividade("listening")
+            # Só reivindica "listening" quando ninguém está pensando ou
+            # falando. Este laço volta ao topo assim que enfileira, e antes
+            # da revisão final apagava o estado de quem estava trabalhando:
+            # as duas threads escrevem no mesmo dono único, e esta escreve
+            # muito mais vezes. O avatar dizia "ouvindo…" durante a
+            # resposta da IA.
+            if atividade() not in ("thinking", "speaking"):
+                definir_atividade("listening")
             try:
                 heard = self.core.voice.listen()
             except Exception as e:
@@ -301,7 +308,6 @@ class UnifiedApp:
                 time.sleep(1)
                 continue
             if heard:
-                definir_atividade("thinking")
                 _log(f"Ouvi: {heard}")
                 self.events.put(heard)
 
@@ -345,6 +351,11 @@ class UnifiedApp:
             return
 
         self.last_activity = time.time()
+        # Quem sabe que o cérebro começou é esta thread. O laço de escuta
+        # marcava "thinking" uma linha antes de enfileirar e voltava ao
+        # topo marcando "listening": a janela durava microssegundos e o
+        # avatar, que desenha a cada 40 ms, nunca a via.
+        definir_atividade("thinking")
         try:
             self.core.handle(text)
         except Exception:
@@ -358,6 +369,12 @@ class UnifiedApp:
             # sleep e some com o avatar no meio do trabalho. Recarimba
             # aconteça o que acontecer, sucesso ou exceção.
             self.last_activity = time.time()
+            # Devolve o estado só se ainda for o "thinking" que este passo
+            # pôs. MilkCore.say() marca "speaking" e já devolve sozinho ao
+            # terminar de falar; sobrescrever aqui atropelaria a fala.
+            if atividade() == "thinking":
+                dormindo = getattr(self.core, "state", None) == "sleep"
+                definir_atividade("idle" if dormindo else "listening")
 
     def _idle_watch(self):
         # Aparecer e sumir virou consequência do estado, não do comando: a
