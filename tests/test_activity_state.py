@@ -182,3 +182,54 @@ def test_definir_e_pulsar_intercalados_nao_divergem(monkeypatch):
     mem = atividade()
     arq, _ = ler_do_arquivo()
     assert mem == arq, f"Divergência: mem={mem!r}, arq={arq!r}"
+
+
+def test_leitor_nunca_ve_o_arquivo_pela_metade(tmp_path, monkeypatch):
+    """
+    Enquanto a gravacao acontece, quem le de outro processo tem de ver o
+    conteudo ANTIGO inteiro -- nunca um arquivo truncado.
+
+    `write_text` truncava o alvo antes de escrever, e o leitor caia no
+    `except` de ler_do_arquivo, que devolve "DESLIGADA" com a MILK viva.
+    Medido antes da correcao: 682 de 1332 leituras concorrentes.
+
+    O espiao le no unico instante em que o conteudo novo ja esta em disco
+    e ainda nao foi publicado. Se alguem voltar a gravar por cima do alvo,
+    `os.replace` deixa de ser chamado, `visto` fica vazio e este teste
+    falha.
+    """
+    import os
+
+    monkeypatch.setattr(estado_mod, "ARQUIVO", tmp_path / "runtime.json")
+    definir_atividade("thinking")
+
+    visto = []
+    replace_real = os.replace
+
+    def replace_espiao(origem, destino):
+        visto.append(ler_do_arquivo()[0])
+        return replace_real(origem, destino)
+
+    monkeypatch.setattr(estado_mod.os, "replace", replace_espiao)
+
+    pulsar()
+
+    assert visto == ["thinking"]
+
+
+def test_gravacao_recusada_nao_deixa_temporario_para_tras(tmp_path, monkeypatch):
+    """Um .tmp orfao por pulso encheria data/ em uma sessao longa."""
+    import os
+
+    monkeypatch.setattr(estado_mod, "ARQUIVO", tmp_path / "runtime.json")
+    definir_atividade("thinking")
+
+    def replace_recusado(origem, destino):
+        raise PermissionError("acesso negado")
+
+    monkeypatch.setattr(estado_mod.os, "replace", replace_recusado)
+    monkeypatch.setattr(estado_mod, "PAUSA_ENTRE_TENTATIVAS", 0)
+
+    pulsar()
+
+    assert list(tmp_path.glob("*.tmp")) == []
