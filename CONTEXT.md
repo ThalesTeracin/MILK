@@ -63,6 +63,29 @@ Cadeia de provedores implementada no router, com TDD.
   do `AI_PROVIDER_ORDER`, que agora é
   `9router_custom,openrouter_free,groq,gemini,nvidia`.
 
+## Decisão de 2026-08-31 — modelo do 9Router trocado
+
+`NINEROUTER_MODEL` passou de `orcustom/z-ai/glm-5.3-flash` para
+`orcustom/qwen/qwen3.8-flash`.
+
+O motivo apareceu no log do router: *"o modelo gastou todo o max_tokens no
+raciocínio e não sobrou resposta"*. O `AI_MAX_TOKENS` é 180, curto de
+propósito porque a MILK fala as respostas; o glm raciocina antes de
+responder e o raciocínio consome o orçamento inteiro. Como resposta vazia
+**não** faz a cadeia passar a vez (decisão de 30/08), a MILK ficava muda
+com o provedor no ar -- o `Testar_Provedores.py` acusava "respondeu vazio".
+
+Medido antes de trocar, mesmo prompt e mesmos 180 tokens: o glm respondeu
+2 de 3 vezes (é intermitente, não sempre quebrado) e o qwen 3 de 3, com
+frases curtas. Outros candidatos foram descartados com evidência:
+`gemini-3.5-flash-lite` e `gemini-3.7-flash` devolvem HTTP 402 Payment
+Required, `nemotron-3.5-lightning:free` vaza o raciocínio no texto falado
+("Here's a thinking process:") e `liquid/lfm-2.5-2.6b:free` volta vazio.
+
+Depois da troca: `Testar_Provedores.py` -- 3 de 3 provedores no ar.
+
+Backup do arquivo de ambiente anterior em `.env.bak-20260831`.
+
 ## Reservas ativas (verificado em 2026-08-30)
 
 `python Testar_Provedores.py` -- 3 de 3 provedores no ar:
