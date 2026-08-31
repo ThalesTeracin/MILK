@@ -3,9 +3,18 @@
 ## Objetivo atual
 
 Projeto publicado no GitHub e revisão final da fase 33 concluída, ambos
-em 2026-08-31. O próximo passo é rotacionar as chaves de Groq e Gemini,
-que devem ser tratadas como expostas. Antes disso, duas conferências
-visuais da fase 33 dependem só de você (ver pendência 1).
+em 2026-08-31.
+
+**PRÓXIMO PASSO EXATO:** o usuário ia fazer as duas conferências visuais
+da fase 33 (pendência 1) e a sessão terminou antes do resultado. Ao
+retomar, perguntar como foram, e só depois seguir para a rotação das
+chaves de Groq e Gemini (pendência 2).
+
+O ambiente para essas conferências já foi preparado em 31/08 e **não
+sobrevive a um reinício da máquina**: o 9Router foi iniciado à mão
+(`9router -t -n`, porta 20128) e o modelo foi trocado. Conferir com
+`python Testar_Provedores.py` antes de tentar de novo -- o esperado é
+3 de 3 provedores no ar.
 
 ## Progresso concluído (2026-08-30, branch `fase-33`)
 
@@ -133,11 +142,9 @@ Concluídos em 31/08: publicação no GitHub (era 1), a revisão dos
 arquivos de `data/` antes de publicar (era 2) e o destino das 27
 renomeações para `archive/` (era 4). Ver a seção Git acima.
 
-1. **Rotacionar as chaves de Groq e Gemini** (foram digitadas no chat).
-   Gerar novas em `console.groq.com/keys` e `aistudio.google.com/apikey`,
-   revogar as antigas e gravar com `python Configurar_Provedores.py`,
-   que usa `getpass` e não ecoa. É o próximo passo.
-2. **Duas conferências visuais da fase 33 — só você pode fazer.**
+1. **Duas conferências visuais da fase 33 — só você pode fazer.**
+   PENDENTE: combinadas em 31/08, ambiente preparado, resultado não
+   registrado. É o primeiro item ao retomar.
    (a) `python src/main.py` com o 9Router no ar, dizer "milk", fazer uma
    pergunta que puxe a IA e conferir se o avatar continua se mexendo
    durante a espera **e se o rótulo diz "pensando…"**. Até 31/08 ele dizia
@@ -149,6 +156,11 @@ renomeações para `archive/` (era 4). Ver a seção Git acima.
    três achados corrigidos e três parked mantidos com o motivo revisto.
    Detalhe em
    `.superpowers/sdd/2026-08-28-fase-33-presence-avatar-skills/progress.md`.
+
+2. **Rotacionar as chaves de Groq e Gemini** (foram digitadas no chat).
+   Gerar novas em `console.groq.com/keys` e `aistudio.google.com/apikey`,
+   revogar as antigas e gravar com `python Configurar_Provedores.py`,
+   que usa `getpass` e não ecoa.
 3. **Tarefa agendada `MILK_Assistant` nunca foi registrada** -- a MILK
    não sobe sozinha no logon. `installer/REGISTRAR_TAREFA_AGENDADA.ps1`
    existe e nunca rodou; você decidiu não registrar nada no Windows,
