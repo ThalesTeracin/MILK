@@ -62,3 +62,4 @@ output/
 # toda vez que a MILK rodava e travava o Atualizar_MILK.ps1, que exige
 # árvore limpa antes de atualizar.
 data/milk_runtime_state.json
+data/session_memory.json
