@@ -1,0 +1,42 @@
+{
+  "_leia_me": "Somente configuracoes. Nunca coloque tokens, senhas ou chaves neste arquivo. O token do GitHub e lido apenas da variavel de ambiente indicada em github.token_env.",
+  "http": {
+    "timeout_segundos": 10,
+    "user_agent": "MilkAssistente/1.0 (assistente pessoal de desktop; Windows)"
+  },
+  "latido": {
+    "volume": 0.8
+  },
+  "microfone": {
+    "_leia_me": "Modo automático: a Milk testa todos os microfones e escolhe o que estiver captando (testa em até 3 tentativas por dispositivo). Com escuta_automatica ligada, ela já sobe ouvindo e atende quando alguém diz o nome dela.",
+    "_dispositivo": "Com 'auto' ela testa todos a cada subida, o que atrasa o inicio. Com o nome fixo ela abre direto, e se o aparelho sumir ela volta a procurar sozinha.",
+    "dispositivo": "Grupo de Microfones",
+    "escuta_automatica": true
+  },
+  "clima": {
+    "cidade_padrao": "São Paulo",
+    "latitude_padrao": -23.5505,
+    "longitude_padrao": -46.6333,
+    "fuso": "America/Sao_Paulo"
+  },
+  "moedas": {
+    "origem_padrao": "USD",
+    "destino_padrao": "BRL"
+  },
+  "feriados": {
+    "pais_padrao": "BR",
+    "quantidade_padrao": 3
+  },
+  "wikipedia": {
+    "idioma": "pt",
+    "frases_do_resumo": 3
+  },
+  "github": {
+    "token_env": "MILK_GITHUB_TOKEN"
+  },
+  "localizacao": {
+    "_politica": "Nominatim exige User-Agent identificavel e no maximo 1 pedido por segundo. Nao faca consultas em massa.",
+    "pais_padrao": "Brasil",
+    "intervalo_minimo_segundos": 1.0
+  }
+}

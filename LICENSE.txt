@@ -1,0 +1,59 @@
+MILK — ASSISTENTE PESSOAL
+
+Copyright (c) 2026 Thales Teracin
+Todos os direitos reservados. / All rights reserved.
+
+
+AVISO DE DIREITOS AUTORAIS
+
+Este programa, o seu código-fonte, a sua documentação, os seus arquivos de
+configuração e todo o material que o acompanha são obra protegida por direito
+autoral, de titularidade exclusiva de Thales Teracin, nos termos da Lei nº 9.610/1998
+(Lei de Direitos Autorais) e da Lei nº 9.609/1998 (Lei do Software), do Brasil,
+e dos tratados internacionais aplicáveis.
+
+
+É PROIBIDO, sem autorização prévia, expressa e por escrito de Thales Teracin:
+
+  1. copiar, reproduzir ou duplicar, total ou parcialmente, por qualquer meio
+     ou processo, incluindo cópia do código-fonte, do executável e de qualquer
+     arquivo que acompanhe este programa;
+
+  2. distribuir, publicar, disponibilizar em rede, compartilhar, ceder,
+     emprestar, alugar, vender, sublicenciar ou transferir a terceiros, a
+     qualquer título, gratuito ou oneroso;
+
+  3. modificar, adaptar, traduzir, derivar obra nova, incorporar a outro
+     programa ou reutilizar qualquer parte deste código em outro trabalho;
+
+  4. fazer engenharia reversa, descompilar, desmontar ou tentar de qualquer
+     forma obter o código-fonte a partir do executável;
+
+  5. remover, alterar, encobrir ou tornar ilegível este aviso, os avisos de
+     direito autoral existentes no código-fonte ou a identificação do autor.
+
+
+USO PERMITIDO
+
+O uso pessoal e privado por Thales Teracin e por quem Thales Teracin expressamente autorizar, na
+forma e nos limites dessa autorização. Nenhum outro direito é concedido, seja
+expressa ou tacitamente.
+
+
+AUSÊNCIA DE GARANTIA
+
+Este programa é fornecido "no estado em que se encontra", sem garantia de
+qualquer espécie, expressa ou implícita, incluindo, sem limitação, garantias
+de adequação a uma finalidade específica, de funcionamento ininterrupto ou
+livre de erros. O autor não responde por qualquer dano direto, indireto,
+incidental ou consequente decorrente do uso ou da impossibilidade de uso.
+
+
+VIOLAÇÃO
+
+A violação deste aviso sujeita o infrator às sanções civis e penais previstas
+em lei, incluindo os artigos 12 e 14 da Lei nº 9.609/1998 e os artigos 101 a
+110 da Lei nº 9.610/1998.
+
+
+Contato para autorizações: Thales Teracin

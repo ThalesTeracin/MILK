@@ -1,0 +1,30 @@
+# Ambiente e build
+.venv/
+build/
+dist/
+__pycache__/
+*.pyc
+*.pyo
+*.spec.bak
+versao_exe.txt
+
+# Backups locais de versoes antigas
+backups/
+
+# Registros de execucao
+logs/
+
+# Estado e dados pessoais de quem usa a Milk
+# (conversa, nome, posicao da janela, fila de tarefas)
+milk_conversa.json
+milk_pessoa.json
+milk_posicao.json
+milk_tarefas.json
+
+# Audio capturado e sintetizado durante o uso
+*.wav
+*.mp3
+
+# Sistema operacional
+Thumbs.db
+desktop.ini
